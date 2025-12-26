@@ -11,8 +11,8 @@ class Well(models.Model):
     name = models.CharField(
         max_length=100,
         unique=True,
-        verbose_name="Название скважины",
-        help_text="Уникальное название скважины (например, 'Скважина №1')"
+        verbose_name="Номер скважины",
+        help_text="Уникальный номер скважины (например, 'Скважина №1')"
     )
     depth = models.FloatField(
         verbose_name="Глубина скважины",
