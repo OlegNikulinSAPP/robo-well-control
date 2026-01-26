@@ -89,7 +89,7 @@ class WellAdmin(admin.ModelAdmin):
 
 ---
 
-## 🔍 Подробный разбор КАЖДОЙ части кода:
+## 🔍 **Подробный разбор КАЖДОЙ части кода:**
 
 ### 1️⃣ **Импорты** 📦
 ```python
@@ -271,117 +271,101 @@ class Well(models.Model):
 
 ---
 
-## 🎯 Что мы узнали - Главные выводы:
-
-### ✅ **Что работает правильно:**
-- **Декоратор `@admin.register()`** — современный способ регистрации
-- **Кастомные методы** с единицами измерения — удобно для пользователей
-- **`short_description` и `admin_order_field`** — обязательны для методов
-- **`fieldsets`** — отличная группировка полей
-- **`readonly_fields`** — правильно защищены системные поля
-
-### ⚠️ **Что нужно исправить:**
-1. **Удалить первый `list_display`** — мертвый код
-2. **Перенести `class Meta` в модель** — не работает в админке
-3. **Добавить переводы `_()`** для интернационализации
-4. **Расширить `search_fields` и `list_filter`** — больше возможностей поиска
-
-### 🎨 **Что делает админка Django крутой:**
-- **Автоматически генерирует** CRUD-интерфейс
-- **Оптимизирует запросы** к базе данных
-- **Предоставляет хуки** для кастомизации
-- **Интегрируется с системой прав** Django
-- **Адаптивный дизайн** — работает на мобильных
-
-### 💡 **Интересные факты, которые мы узнали:**
-- **Функции в Python — это объекты** (можно добавлять атрибуты!)
-- **`gettext_lazy`** откладывает перевод до запроса пользователя
-- **Пагинация экономит память** и ускоряет загрузку
-- **Django Admin — это не "просто форма"**, а целый фреймворк!
-
----
-
-## 🚀 Как бы выглядел улучшенный код:
+## 🚀 **УЛУЧШЕННЫЙ ВАРИАНТ (ВАШ ВЫБОР В КОНЦЕ)**
 
 ```python
 from django.contrib import admin
-from django.utils.translation import gettext_lazy as _
 from .models import Well
 
 
 @admin.register(Well)
 class WellAdmin(admin.ModelAdmin):
-    """Административный интерфейс для управления скважинами."""
+    """
+    Административный интерфейс для управления скважинами.
+    """
     
-    # ЕДИНСТВЕННЫЙ list_display (удалили дубликат)
+    # 1. МОДЕРНИЗИРОВАННЫЕ МЕТОДЫ ОТОБРАЖЕНИЯ
+    @admin.display(description='Номер скважины', ordering='name')
+    def name_column(self, obj):
+        # Используем современный декоратор @admin.display вместо ручного задания атрибутов
+        # description='Номер скважины' заменяет get_name_display.short_description
+        # ordering='name' заменяет get_name_display.admin_order_field
+        return obj.name  # Просто возвращаем значение поля
+    
+    @admin.display(description='Глубина', ordering='depth')
+    def depth_column(self, obj):
+        # Декоратор объединяет все настройки в одном месте
+        # Улучшенная версия с проверкой на None
+        return f"{obj.depth} м" if obj.depth else "-"
+    
+    # 2. УПРОЩЕННЫЙ list_display (без дублирования)
     list_display = (
-        'name',
-        'get_depth_display',
-        'get_diameter_display', 
-        'get_pump_depth_display',
-        'dynamic_level',
-        'formation_debit',
-        'created_at'
+        'name_column',           # Используем новый метод
+        'depth_column',          # Ясно, что это колонка в таблице!
+        'diameter',              # Обычное поле (будет "Diameter" на латинице)
+        'pump_depth',            # Обычное поле
+        'dynamic_level',         # Обычное поле  
+        'formation_debit',       # Обычное поле
+        'created_at'             # Обычное поле
     )
     
-    # Кастомные методы с обработкой None
-    def get_depth_display(self, obj):
-        return f"{obj.depth:.1f} м" if obj.depth else "-"
-    get_depth_display.short_description = _('Глубина скважины')
-    get_depth_display.admin_order_field = 'depth'
+    # 3. ОСТАЛЬНЫЕ НАСТРОЙКИ БЕЗ ИЗМЕНЕНИЙ
+    list_filter = ('created_at',)
+    search_fields = ('name',)
+    ordering = ('name',)
     
-    def get_diameter_display(self, obj):
-        return f"{obj.diameter} мм" if obj.diameter else "-"
-    get_diameter_display.short_description = _('Диаметр колонны')
-    get_diameter_display.admin_order_field = 'diameter'
-    
-    def get_pump_depth_display(self, obj):
-        return f"{obj.pump_depth} м" if obj.pump_depth else "-"
-    get_pump_depth_display.short_description = _('Глубина насоса')
-    get_pump_depth_display.admin_order_field = 'pump_depth'
-    
-    # Расширенные фильтры
-    list_filter = (
-        'created_at',
-        ('depth', admin.RangeFilter),  # Диапазон значений
-    )
-    
-    # Расширенный поиск
-    search_fields = ('name', 'description')
-    
-    # Сортировка по дате создания (новые сверху)
-    ordering = ('-created_at', 'name')
-    
-    # Поля с переводами
     fieldsets = (
-        (_('Основная информация'), {
+        ('Основная информация', {
             'fields': ('name', 'depth', 'diameter'),
-            'description': _('Геологические и конструктивные параметры скважины')
+            'description': 'Геологические и конструктивные параметры скважины'
         }),
-        (_('Эксплуатационные параметры'), {
+        ('Эксплуатационные параметры', {
             'fields': ('pump_depth', 'dynamic_level', 'static_level', 'formation_debit'),
-            'description': _('Параметры работы и продуктивности скважины')
+            'description': 'Параметры работы и продуктивности скважины'
         }),
-        (_('Метаданные'), {
+        ('Метаданные', {
             'fields': ('created_at', 'updated_at'),
-            'description': _('Системная информация'),
+            'description': 'Системная информация',
             'classes': ('collapse',)
         })
     )
     
-    # Только для чтения
     readonly_fields = ('created_at', 'updated_at')
+    list_per_page = 20
     
-    # Пагинация
-    list_per_page = 25
-    
-    # УДАЛИЛИ: class Meta - перенесли в модель!
+    # УДАЛЕНО: class Meta (перенести в модель!)
 ```
 
----
+## 🎯 **ЧТО ИМЕННО УЛУЧШЕНО:**
 
-## 🌟 Финальная мысль:
+### ✅ **1. Современный декоратор `@admin.display`**
+- **Было:** 3 строки на метод
+  ```python
+  def get_depth_display(self, obj):
+      return f"{obj.depth} м"
+  get_depth_display.short_description = 'Глубина скважины'
+  get_depth_display.admin_order_field = 'depth'
+  ```
+  
+- **Стало:** 2 строки на метод
+  ```python
+  @admin.display(description='Глубина', ordering='depth')
+  def depth_column(self, obj):
+      return f"{obj.depth} м" if obj.depth else "-"
+  ```
 
-Ваш код — это **хорошая основа**! Вы правильно используете основные концепции Django Admin. Теперь, с пониманием **как работает каждая строчка**, вы можете создавать еще более мощные и удобные интерфейсы для управления данными! 🎉
+### ✅ **2. Улучшенные имена методов `*_column`**
+- **Было:** `get_name_display` (Django-стиль, но избыточно)
+- **Стало:** `name_column` (ясно указывает, что это колонка таблицы)
 
-**Django Admin — это как LEGO для админ-панелей:** есть базовые блоки, а вы собираете из них именно то, что нужно вашему проекту! 🧱✨
+### ✅ **3. Обработка None-значений**
+  ```python
+  return f"{obj.depth} м" if obj.depth else "-"  # Вместо ошибки при None
+  ```
+
+### ✅ **4. Удален мертвый код**
+- Удален первый `list_display` (никогда не использовался)
+- Удален `class Meta` из админки (не работает, перенести в модель)
+
+### ✅ **5. Единый стиль**
+Все кастомные колонки теперь используют одинаковый современный подход!
