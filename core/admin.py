@@ -20,10 +20,13 @@ class WellAdmin(admin.ModelAdmin):
     def pump_depth_column(self, obj):
         return obj.pump_depth
 
+    @admin.display(description='Динамический уровень, м', ordering='dynamic_level')
+    def dynamic_level_column(self, obj):
+        return obj.dynamic_level
+
     @admin.display(description='Статический уровень, м', ordering='static_level')
     def static_level_column(self, obj):
         return obj.static_level
-
 
     @admin.display(description='Дебит скважины, м³/сутки', ordering='formation_debit')
     def formation_debit_column(self, obj):
