@@ -9,6 +9,7 @@ class PumpCharacteristicSerializer(serializers.ModelSerializer):
     Предоставляет полный доступ к данным насосов через REST API.
     Включает как основные параметры, так и характеристики для построения графиков.
     """
+    # Вычисляемые поля для удобства API
     max_efficiency_display = serializers.SerializerMethodField()
     optimal_range_display = serializers.SerializerMethodField()
     characteristics_summary = serializers.SerializerMethodField()
@@ -38,7 +39,7 @@ class PumpCharacteristicSerializer(serializers.ModelSerializer):
                 return f'{obj.max_efficiency:.1f}% при {obj.max_efficiency_flow:.0f} м³/сут'
             return 'Не рассчитано'
 
-        def ger_optimal_range_display(self, obj):
+        def get_optimal_range_display(self, obj):
             """
             Форматированное отображение оптимального диапазона.
 
@@ -157,4 +158,15 @@ class PumpCharacteristicSerializer(serializers.ModelSerializer):
             """
             representation = super().to_representation(instance)
 
+            # Добавляем вычисляемые поля
             representation['max_efficiency_display'] = self.get_max_efficiency_display(instance)
+            representation['optimal_range_display'] = self.get_optimal_range_display(instance)
+            representation['characteristic_summary'] = self.get_characteristic_summary(instance)
+
+            # Форматируем технические характеристики
+            if representation.get('nominal_head'):
+                representation['nominal_head_display'] = f'{representation["nominal_head"]} м'
+            if representation.get('stages_count'):
+                representation['stages_display'] = f'{representation["stages_count"]} ступеней'
+
+            return representation
