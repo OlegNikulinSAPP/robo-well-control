@@ -1,0 +1,60 @@
+{% extends "core/base.html" %}
+
+{% block title %}Уведомления - RoboWell{% endblock %}
+
+{% block content %}
+<h1>Уведомления</h1>
+
+<div class="mb-3">
+    <button class="btn btn-primary" onclick="markAllRead()">Отметить все как прочитанные</button>
+</div>
+
+<div id="alerts-list" class="list-group">
+    <!-- Загружается через JavaScript -->
+</div>
+
+<script>
+function loadAlerts() {
+    fetch('/api/alerts/?ordering=-created_at')
+        .then(r => r.json())
+        .then(data => {
+            const container = document.getElementById('alerts-list');
+            container.innerHTML = data.results.map(alert => `
+                <div class="list-group-item list-group-item-${alert.severity === 'critical' ? 'danger' : alert.severity === 'warning' ? 'warning' : 'info'}">
+                    <div class="d-flex justify-content-between">
+                        <h5>${alert.well_name}</h5>
+                        <small>${new Date(alert.created_at).toLocaleString()}</small>
+                    </div>
+                    <p>${alert.message}</p>
+                    ${!alert.is_read ? '<button class="btn btn-sm btn-success" onclick="markRead('+alert.id+')">Отметить</button>' : ''}
+                </div>
+            `).join('');
+        });
+}
+
+function markRead(id) {
+    fetch('/api/alerts/mark_read/', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({alert_ids: [id]})
+    }).then(() => loadAlerts());
+}
+
+function markAllRead() {
+    fetch('/api/alerts/?is_read=false')
+        .then(r => r.json())
+        .then(data => {
+            const ids = data.results.map(a => a.id);
+            if (ids.length) {
+                fetch('/api/alerts/mark_read/', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({alert_ids: ids})
+                }).then(() => loadAlerts());
+            }
+        });
+}
+
+loadAlerts();
+</script>
+{% endblock %}

@@ -1,0 +1,369 @@
+{% extends "core/base.html" %} {% block title %}{{ well.name }} - RoboWell{%endblock %}
+{% block content %}
+<div class="mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item">
+        <a href="{% url 'dashboard' %}">Главная</a>
+      </li>
+      <li class="breadcrumb-item"><a href="{% url 'well_list' %}">Скважины</a></li>
+      <li class="breadcrumb-item active">{{ well.name }}</li>
+    </ol>
+  </nav>
+</div>
+
+<!-- Well Header -->
+<div class="row mb-4">
+  <div class="col-md-8">
+    <h1><i class="fas fa-oil-well"></i> {{ well.name }}</h1>
+    {% if well.external_id %}
+    <p class="text-muted">External ID: {{ well.external_id }}</p>
+    {% endif %}
+  </div>
+  <div class="col-md-4 text-end">
+    <span class="badge bg-{{ well.is_active|yesno:'success,secondary' }} p-2">
+      {{ well.is_active|yesno:'В работе,Остановлена' }}
+    </span>
+  </div>
+</div>
+
+<!-- Main Info Cards -->
+<div class="row">
+  <div class="col-md-6">
+    <div class="card mb-4">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">
+          <i class="fas fa-info-circle"></i> Basic Information
+        </h5>
+      </div>
+      <div class="card-body">
+        <table class="table table-hover">
+          <tr>
+            <th>Well Name:</th>
+            <td>{{ well.name }}</td>
+          </tr>
+          <tr>
+            <th>Well Depth:</th>
+            <td>{{ well.depth }} m</td>
+          </tr>
+          <tr>
+            <th>Casing Diameter:</th>
+            <td>{{ well.diameter }} mm</td>
+          </tr>
+          <tr>
+            <th>Pump Setting Depth:</th>
+            <td>{{ well.pump_depth }} m</td>
+          </tr>
+          <tr>
+            <th>Dynamic Level:</th>
+            <td>{{ well.dynamic_level }} m</td>
+          </tr>
+          <tr>
+            <th>Static Level:</th>
+            <td>{{ well.static_level }} m</td>
+          </tr>
+          <tr>
+            <th>Formation Debit:</th>
+            <td>{{ well.formation_debit }} m³/day</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card mb-4">
+      <div class="card-header bg-success text-white">
+        <h5 class="mb-0"><i class="fas fa-chart-line"></i> Current Status</h5>
+      </div>
+      <div class="card-body">
+        <div id="well-status">
+          <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <p>Loading latest telemetry...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-header bg-info text-white">
+        <h5 class="mb-0"><i class="fas fa-calendar"></i> System Information</h5>
+      </div>
+      <div class="card-body">
+        <table class="table">
+          <tr>
+            <th>Created:</th>
+            <td>{{ well.created_at|date:"d.m.Y H:i" }}</td>
+          </tr>
+          <tr>
+            <th>Last Updated:</th>
+            <td>{{ well.updated_at|date:"d.m.Y H:i" }}</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Action Buttons -->
+<div class="row mt-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header bg-secondary text-white">
+        <h5 class="mb-0"><i class="fas fa-tasks"></i> Actions</h5>
+      </div>
+      <div class="card-body">
+        <div class="btn-group" role="group">
+          <a
+            href="{% url 'well_telemetry' well.id %}"
+            class="btn btn-warning btn-lg"
+          >
+            <i class="fas fa-chart-bar"></i> Telemetry
+          </a>
+          <a
+            href="{% url 'well_dashboard' well.id %}"
+            class="btn btn-success btn-lg"
+          >
+            <i class="fas fa-chart-line"></i> Dashboard
+          </a>
+          <button
+            type="button"
+            class="btn btn-primary btn-lg"
+            data-bs-toggle="modal"
+            data-bs-target="#controlModal"
+          >
+            <i class="fas fa-sliders-h"></i> Control
+          </button>
+          <a
+            href="/api/wells/{{ well.id }}/"
+            class="btn btn-info btn-lg"
+            target="_blank"
+          >
+            <i class="fas fa-code"></i> API
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Back button -->
+<div class="mt-3">
+  <a href="{% url 'well_list' %}" class="btn btn-secondary">
+    <i class="fas fa-arrow-left"></i> Back to List
+  </a>
+</div>
+
+<!-- Control Modal -->
+<div class="modal fade" id="controlModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-warning">
+        <h5 class="modal-title">
+          <i class="fas fa-sliders-h"></i> Control Well: {{ well.name }}
+        </h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <!-- Frequency Control -->
+        <div class="mb-4">
+          <label class="form-label">
+            <strong>Frequency:</strong> <span id="freqValue">50</span> Hz
+          </label>
+          <input
+            type="range"
+            class="form-range"
+            id="frequency"
+            min="30"
+            max="60"
+            value="50"
+            step="0.1"
+          />
+        </div>
+
+        <!-- Ramp Time -->
+        <div class="mb-4">
+          <label class="form-label">
+            <strong>Ramp Time:</strong> <span id="rampValue">30</span> s
+          </label>
+          <input
+            type="range"
+            class="form-range"
+            id="rampTime"
+            min="10"
+            max="120"
+            value="30"
+            step="5"
+          />
+        </div>
+
+        <!-- Control Buttons -->
+        <div class="d-grid gap-2">
+          <div class="btn-group" role="group">
+            <button class="btn btn-success" onclick="sendCommand('start')">
+              <i class="fas fa-play"></i> Start
+            </button>
+            <button class="btn btn-secondary" onclick="sendCommand('stop')">
+              <i class="fas fa-stop"></i> Stop
+            </button>
+            <button class="btn btn-danger" onclick="sendCommand('emergency')">
+              <i class="fas fa-exclamation-triangle"></i> Emergency Stop
+            </button>
+          </div>
+
+          <button class="btn btn-primary" onclick="sendCommand('frequency')">
+            <i class="fas fa-sliders-h"></i> Set Frequency
+          </button>
+
+          <button class="btn btn-info" onclick="calculateOptimal()">
+            <i class="fas fa-calculator"></i> Calculate Optimal Frequency
+          </button>
+        </div>
+
+        <!-- Result Message -->
+        <div id="commandResult" class="mt-3"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script>
+  // Update displayed values
+  document.getElementById('frequency').addEventListener('input', function() {
+      document.getElementById('freqValue').textContent = this.value;
+  });
+  document.getElementById('rampTime').addEventListener('input', function() {
+      document.getElementById('rampValue').textContent = this.value;
+  });
+
+  // Load latest telemetry
+  function loadLatestTelemetry() {
+      fetch('/api/telemetry/latest/?well={{ well.id }}')
+          .then(response => response.json())
+          .then(data => {
+              let html = '<table class="table">';
+              if (data && data.id) {
+                  html += `
+                      <tr>
+                          <th>Last Update:</th>
+                          <td>${new Date(data.timestamp).toLocaleString('ru-RU')}</td>
+                      </tr>
+                      <tr>
+                          <th>Pressure:</th>
+                          <td>${data.intake_pressure || '—'} atm</td>
+                      </tr>
+                      <tr>
+                          <th>Temperature:</th>
+                          <td>${data.intake_temperature || '—'} °C</td>
+                      </tr>
+                      <tr>
+                          <th>Current A:</th>
+                          <td>${data.current_phase_a || '—'} A</td>
+                      </tr>
+                      <tr>
+                          <th>Frequency:</th>
+                          <td>${data.frequency || '—'} Hz</td>
+                      </tr>
+                  `;
+              } else {
+                  html += '<tr><td colspan="2" class="text-center">No telemetry data available</td></tr>';
+              }
+              html += '</table>';
+              document.getElementById('well-status').innerHTML = html;
+          })
+          .catch(error => {
+              document.getElementById('well-status').innerHTML =
+                  '<div class="alert alert-danger">Error loading telemetry</div>';
+          });
+  }
+
+  // Send command
+  function sendCommand(type) {
+      const resultDiv = document.getElementById('commandResult');
+      resultDiv.innerHTML = '<div class="alert alert-info">Sending command...</div>';
+
+      let commandData = {
+          well_id: {{ well.id }},
+          frequency: 50  // default for non-frequency commands
+      };
+
+      if (type === 'frequency') {
+          commandData.frequency = parseFloat(document.getElementById('frequency').value);
+          commandData.ramp_time = parseInt(document.getElementById('rampTime').value);
+      } else if (type === 'start') {
+          commandData.command_type = 'start';
+      } else if (type === 'stop') {
+          commandData.command_type = 'stop';
+      } else if (type === 'emergency') {
+          commandData.command_type = 'emergency_stop';
+      }
+
+      commandData.reason = 'manual';
+      commandData.user = 'web_interface';
+
+      console.log('Sending command:', commandData);
+
+      fetch('/api/control/adjust_frequency/', {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': '{{ csrf_token }}'
+          },
+          body: JSON.stringify(commandData)
+      })
+      .then(response => response.json())
+      .then(data => {
+          if (data.status === 'success') {
+              resultDiv.innerHTML = '<div class="alert alert-success">✓ Command sent successfully</div>';
+              // Close modal after 1 second
+              setTimeout(() => {
+                  document.querySelector('[data-bs-dismiss="modal"]').click();
+              }, 1000);
+          } else {
+              resultDiv.innerHTML = '<div class="alert alert-danger">✗ Error: ' +
+                  (data.message || JSON.stringify(data)) + '</div>';
+          }
+      })
+      .catch(error => {
+          resultDiv.innerHTML = '<div class="alert alert-danger">✗ Network error</div>';
+      });
+  }
+
+  // Calculate optimal frequency
+  function calculateOptimal() {
+      const resultDiv = document.getElementById('commandResult');
+      resultDiv.innerHTML = '<div class="alert alert-info">Calculating optimal frequency...</div>';
+
+      fetch('/api/control/optimal/?well_id={{ well.id }}')
+          .then(response => response.json())
+          .then(data => {
+              if (data.optimal_frequency) {
+                  document.getElementById('frequency').value = data.optimal_frequency;
+                  document.getElementById('freqValue').textContent = data.optimal_frequency;
+                  resultDiv.innerHTML = '<div class="alert alert-success">✓ Optimal frequency: ' +
+                      data.optimal_frequency + ' Hz</div>';
+              } else {
+                  resultDiv.innerHTML = '<div class="alert alert-warning">✗ Could not calculate</div>';
+              }
+          })
+          .catch(error => {
+              resultDiv.innerHTML = '<div class="alert alert-danger">✗ Calculation error</div>';
+          });
+  }
+
+  // Load on page load
+  document.addEventListener('DOMContentLoaded', loadLatestTelemetry);
+</script>
+{% endblock %}

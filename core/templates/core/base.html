@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}RoboWell Control System{% endblock %}</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    {% block extra_css %}
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-weight: 400;
+            background: linear-gradient(135deg, #a8c0ff 0%, #8ec5fc 100%);
+            min-height: 100vh;
+        }
+        h1, h2, h3, h4, h5, h6, .navbar-brand, .nav-link {
+            font-weight: 500;
+        }
+        .navbar-nav .nav-link {
+            transition: all 0.3s ease;
+            border-radius: 20px;
+            margin: 0 2px;
+            padding: 0.5rem 1rem;
+        }
+        .navbar-nav .nav-link:hover {
+            background-color: rgba(255,255,255,0.1);
+            transform: translateY(-1px);
+        }
+        .card, .btn, .alert, .dropdown-menu {
+            border-radius: 15px !important;
+        }
+        .navbar {
+            border-radius: 0 0 15px 15px !important;
+        }
+    </style>
+    {% endblock %}
+</head>
+<body>
+    <!-- Навигация -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{% url 'dashboard' %}">RoboWell Control</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link
+                        {% if request.resolver_match.url_name == 'well_list' %}
+                        active
+                        {% endif %}"
+                           href="{% url 'well_list' %}"><i class="bi bi-droplet me-1"></i>Скважины</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link
+                        {% if request.resolver_match.url_name == 'pump_list' %}
+                        active
+                        {% endif %}"
+                           href="{% url 'pump_list' %}"><i class="bi bi-gear-fill me-1"></i>Насосы</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link
+                        {% if request.resolver_match.url_name == 'motor_list' %}
+                        active
+                        {% endif %}"
+                           href="{% url 'motor_list' %}"><i class="bi bi-lightning-charge-fill me-1"></i>Электродвигатели</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link
+                        {% if request.resolver_match.url_name == 'command_logs' %}
+                        active
+                        {% endif %}"
+                           href="{% url 'command_logs' %}"><i class="bi bi-clock-history me-1"></i>История команд</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Основной контент -->
+    <main class="container-fluid py-4 px-4">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Подвал -->
+    <footer class="bg-dark text-light text-center text-lg-start mt-5 opacity-75">
+        <div class="container p-4">
+            <div class="row">
+                <div class="col-lg-6 col-md-12 mb-4 mb-md-0">
+                    <h5 class="text-uppercase">RoboWell</h5>
+                    <p>
+                        Система RoboWell для мониторинга и контроля нефтяных скважин
+                    </p>
+                </div>
+                <div class="col-lg-6 col-md-12 mb-4 mb-md-0">
+                    <h5 class="text-uppercase">Контакты</h5>
+                    <p>
+                        Email: nikulinov@sistemaservis.ru
+                        Тел.: +7 917 255 12 34
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="text-center p-3 bg-dark text-white-50">
+            RockWell. Все права защищены.
+        </div>
+    </footer>
+
+    <!-- Уведомления -->
+    <div class="position-fixed top-0 end-0 p-3" style="z-index: 1050">
+    <div id="alert-container"></div>
+</div>
+
+<script>
+    function showNotification(count) {
+        const container = document.getElementById('alert-container');
+        if (count > 0) {
+            document.title = `(${count}) RoboWell`;
+
+            // Создаем toast-уведомление
+            const toast = document.createElement('div');
+            toast.className = 'toast show align-items-center text-white bg-primary border-0 mb-2';
+            toast.setAttribute('role', 'alert');
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="bi bi-bell-fill me-2"></i>
+                        У вас ${count} новое ${count > 4 ? 'уведомлений' : count > 1 ? 'уведомления' : 'уведомление'}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+            container.appendChild(toast);
+
+            // Автоматически удаляем через 5 секунд
+            setTimeout(() => {
+                toast.remove();
+            }, 5000);
+        } else {
+            document.title = 'RoboWell';
+        }
+    }
+
+    function checkAlerts() {
+        fetch('/api/alerts/unread_count/')
+            .then(response => response.json())
+            .then(data => {
+                showNotification(data.count);
+            });
+    }
+
+    checkAlerts();
+    setInterval(checkAlerts, 30000);
+</script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

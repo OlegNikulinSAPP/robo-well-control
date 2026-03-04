@@ -1,0 +1,33 @@
+{% extends "core/base.html" %}
+
+{% block title %}Насосы ЭЦН - RoboWell{% endblock %}
+
+{% block content %}
+<h1>Насосы ЭЦН</h1>
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>Модель</th>
+                <th>Подача (м³/сут)</th>
+                <th>Напор (м)</th>
+                <th>КПД (%)</th>
+                <th>Действия</th>  <!-- Новая колонка -->
+            </tr>
+        </thead>
+        <tbody>
+            {% for pump in pumps %}
+            <tr>
+                <td>{{ pump.harka_stupen }}</td>
+                <td>{{ pump.nominal_range }}</td>
+                <td>{{ pump.nominal_head }}</td>
+                <td>{{ pump.max_efficiency }}</td>
+                <td>
+                    <a href="{% url 'pump_detail' pump.id %}" class="btn btn-sm btn-info">Просмотр</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

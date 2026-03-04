@@ -40,6 +40,8 @@ INSTALLED_APPS = [
     'django_filters',
     'core',
     'rest_framework',
+    'drf_yasg',
+    'django_celery_results',
 ]
 
 MIDDLEWARE = [
@@ -133,5 +135,14 @@ REST_FRAMEWORK = {
         'rest_framework.filters.OrderingFilter',
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 20,
+    'PAGE_SIZE': 10,
 }
+
+# Celery settings
+CELERY_BROKER_URL = 'django://'  # используем БД как брокер
+CELERY_RESULT_BACKEND = 'django-db'
+CELERY_CACHE_BACKEND = 'django-cache'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE

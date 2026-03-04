@@ -1,0 +1,48 @@
+{% extends "core/base.html" %}
+
+{% block title %}История команд - RoboWell{% endblock %}
+
+{% block content %}
+<h1>История команд</h1>
+
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>Время</th>
+                <th>Скважина</th>
+                <th>Команда</th>
+                <th>Параметры</th>
+                <th>Статус</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td>{{ log.created_at|date:"d.m.Y H:i:s" }}</td>
+                <td>{{ log.well.name }}</td>
+                <td>{{ log.get_command_type_display }}</td>
+                <td>
+                    {% if log.parameters %}
+                        <pre class="mb-0"><small>{{ log.parameters|pprint }}</small></pre>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if log.status == 'success' %}
+                        <span class="badge bg-success">Успех</span>
+                    {% elif log.status == 'error' %}
+                        <span class="badge bg-danger">Ошибка</span>
+                    {% else %}
+                        <span class="badge bg-warning">Отправлено</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="text-center">Нет команд</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -13,17 +13,37 @@ class PumpCharacteristicSerializer(serializers.ModelSerializer):
     max_efficiency_display = serializers.SerializerMethodField()
     optimal_range_display = serializers.SerializerMethodField()
     characteristics_summary = serializers.SerializerMethodField()
+    recommended_motor_info = serializers.SerializerMethodField()
 
     class Meta:
         model = PumpCharacteristic
-        fields = "__all__"
-        read_only_fields = (
-            'created_at',
-            'updated_at',
-            'max_efficiency',
-            'max_efficiency_flow',
-            'optimal_flow_range'
-        )
+        fields = [
+            'id', 'cod', 'zavod', 'harka_stupen', 'material_stupen',
+            'q_values', 'h_values', 'n_values', 'kpd_values',
+            'left_range', 'nominal_range', 'right_range',
+            'min_kpd_rosneft', 'source_file', 'stages_count',
+            'nominal_head', 'max_efficiency', 'max_efficiency_flow',
+            'optimal_flow_range', 'created_at', 'updated_at', 'is_active',
+            'recommended_motor', 'recommended_motor_info',
+            'max_efficiency_display', 'optimal_range_display',
+            'characteristics_summary'  # 👈 добавлено
+        ]
+
+    def get_recommended_motor_info(self, obj):
+        """
+        Информация о рекомендуемом двигателе.
+        """
+        if obj.recommended_motor:
+            motor = obj.recommended_motor
+            return {
+                'id': motor.id,
+                'model': motor.model,
+                'manufacturer': motor.manufacturer,
+                'nominal_power': motor.nominal_power,
+                'nominal_voltage': motor.nominal_voltage,
+                'efficiency': motor.efficiency
+            }
+        return None
 
     def get_max_efficiency_display(self, obj):
         """
@@ -53,7 +73,7 @@ class PumpCharacteristicSerializer(serializers.ModelSerializer):
             return f'{obj.optimal_flow_range[0]:.0f} - {obj.optimal_flow_range[1]:.0f} м³/сут'
         return 'Не рассчитан'
 
-    def get_characteristics_summary(self, obj):  # Исправлено: characteristics (множественное число)
+    def get_characteristics_summary(self, obj):
         """
         Сводка характеристик насоса.
 
@@ -161,11 +181,11 @@ class PumpCharacteristicSerializer(serializers.ModelSerializer):
         # Добавляем вычисляемые поля
         representation['max_efficiency_display'] = self.get_max_efficiency_display(instance)
         representation['optimal_range_display'] = self.get_optimal_range_display(instance)
-        representation['characteristics_summary'] = self.get_characteristics_summary(instance)  # Исправлено
+        representation['characteristics_summary'] = self.get_characteristics_summary(instance)
 
         # Форматируем технические характеристики
         if representation.get('nominal_head'):
-            representation['nominal_head_display'] = f'{representation["nominal_head"]:.0f} м'  # Добавлено форматирование
+            representation['nominal_head_display'] = f'{representation["nominal_head"]:.0f} м'
         if representation.get('stages_count'):
             representation['stages_display'] = f'{representation["stages_count"]} ступеней'
 
@@ -199,7 +219,6 @@ class PumpCharacteristicListSerializer(serializers.ModelSerializer):
             'max_efficiency_flow',
             'optimal_range',
             'stages_count',
-            'housing_diameter',
             'left_range',
             'right_range',
             'min_kpd_rosneft',

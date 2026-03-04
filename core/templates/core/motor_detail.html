@@ -1,0 +1,210 @@
+{% extends "core/base.html" %}
+
+{% block title %}{{ motor.model }} - RoboWell{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Главная</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'motor_list' %}">Двигатели</a></li>
+            <li class="breadcrumb-item active">{{ motor.model }}</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Основная информация</h5>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <tr>
+                        <th>Модель:</th>
+                        <td>{{ motor.model }}</td>
+                    </tr>
+                    <tr>
+                        <th>ID:</th>
+                        <td>{{ motor.motor_id }}</td>
+                    </tr>
+                    <tr>
+                        <th>Производитель:</th>
+                        <td>{{ motor.manufacturer }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Номинальные параметры</h5>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <tr>
+                        <th>Мощность:</th>
+                        <td>{{ motor.nominal_power }} кВт</td>
+                    </tr>
+                    <tr>
+                        <th>Напряжение:</th>
+                        <td>{{ motor.nominal_voltage }} В</td>
+                    </tr>
+                    <tr>
+                        <th>Ток:</th>
+                        <td>{{ motor.nominal_current }} А</td>
+                    </tr>
+                    <tr>
+                        <th>Обороты:</th>
+                        <td>{{ motor.rotation_speed }} об/мин</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Электрические характеристики</h5>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <tr>
+                        <th>КПД:</th>
+                        <td>{{ motor.efficiency }}%</td>
+                    </tr>
+                    <tr>
+                        <th>cos φ:</th>
+                        <td>{{ motor.power_factor }}</td>
+                    </tr>
+                    <tr>
+                        <th>Скольжение:</th>
+                        <td>{{ motor.slip }}%</td>
+                    </tr>
+                    <tr>
+                        <th>Класс энергоэффективности:</th>
+                        <td>{{ motor.calculate_efficiency_class }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-warning">
+                <h5 class="mb-0">Механические характеристики</h5>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <tr>
+                        <th>Вибрация:</th>
+                        <td>{{ motor.vibration_level }} мм/с</td>
+                    </tr>
+                    <tr>
+                        <th>Статус вибрации:</th>
+                        <td>
+                            {% if motor.vibration_level <= 2.8 %}
+                                <span class="badge bg-success">Отличное</span>
+                                <small class="text-muted">В пределах нормы</small>
+                            {% elif motor.vibration_level <= 4.5 %}
+                                <span class="badge bg-info">Хорошее</span>
+                                <small class="text-muted">Требуется наблюдение</small>
+                            {% elif motor.vibration_level <= 7.1 %}
+                                <span class="badge bg-warning">Удовлетворительное</span>
+                                <small class="text-muted">Требуется диагностика</small>
+                            {% else %}
+                                <span class="badge bg-danger">Критическое</span>
+                                <small class="text-muted">Требуется ремонт</small>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Крутящий момент:</th>
+                        <td>{{ motor.torque }} кгс.см</td>
+                    </tr>
+                    <tr>
+                        <th>Момент проворачивания:</th>
+                        <td>{{ motor.shaft_torque }} кгс.м</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0">Изоляция и испытания</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <strong>Сопротивление изоляции:</strong>
+                        {{ motor.insulation_resistance }} МОм
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Испытательное напряжение:</strong>
+                        {{ motor.insulation_test_voltage }} В
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Выбег:</strong>
+                        {{ motor.rundown_time }} с
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- После карточек, перед кнопкой "Назад" -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Уровень вибрации</h5>
+            </div>
+            <div class="card-body text-center">
+                <div id="motor-chart" style="width:100%; height:400px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-3">
+    <a href="{% url 'motor_list' %}" class="btn btn-secondary">← Назад к списку</a>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // График насоса (если есть)
+    {% if pump %}
+    fetch('{% url "pump_chart_data" pump.id %}')
+        .then(response => response.json())
+        .then(data => {
+            Plotly.newPlot('pump-chart', JSON.parse(data.graph));
+        });
+    {% endif %}
+
+    // График двигателя
+    {% if motor %}
+    fetch('{% url "motor_chart_data" motor.id %}')
+        .then(response => response.json())
+        .then(data => {
+            Plotly.newPlot('motor-chart', JSON.parse(data.graph));
+        });
+    {% endif %}
+});
+</script>
+{% endblock %}

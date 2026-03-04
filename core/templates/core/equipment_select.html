@@ -1,0 +1,609 @@
+{% extends "core/base.html" %}
+
+{% block title %}Подбор оборудования - RoboWell{% endblock %}
+
+{% block content %}
+<div class="row mb-5">
+    <div class="col-lg-8">
+        <h1 class="display-4 fw-bold text-gradient mb-3">
+            <i class="fas fa-search me-2"></i>Подбор оборудования
+        </h1>
+        <p class="lead text-muted">Подбор насосов и двигателей для условий конкретной скважины</p>
+    </div>
+</div>
+
+<!-- Хлебные крошки -->
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Подбор оборудования</li>
+    </ol>
+</nav>
+
+<!-- Карточка с формой поиска -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="fas fa-sliders-h me-2"></i>Параметры подбора</h5>
+    </div>
+    <div class="card-body">
+        <form id="equipment-search-form" method="get" action="#" class="row g-3">
+
+            <!-- Тип подбора -->
+            <div class="col-md-12">
+                <label for="selection-type" class="form-label fw-bold">Тип подбора:</label>
+                <select id="selection-type" class="form-select" name="type">
+                    <option value="pump" selected>🔧 Подбор насоса по параметрам</option>
+                    <option value="motor">⚡ Подбор двигателя для насоса</option>
+                    <option value="well">🛢️ Полный подбор для скважины</option>
+                </select>
+            </div>
+
+            <!-- Поля для режима ПОДБОР НАСОСА -->
+            <div id="pump-fields" class="row g-3 mt-2">
+                <div class="col-md-6">
+                    <label for="pump-flow" class="form-label fw-bold">Требуемый расход (м³/сут):</label>
+                    <input type="number" class="form-control" id="pump-flow" name="required_flow"
+                           value="100" min="10" max="1000" step="5" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="pump-head" class="form-label fw-bold">Требуемый напор (м):</label>
+                    <input type="number" class="form-control" id="pump-head" name="required_head"
+                           value="800" min="100" max="3000" step="10" required>
+                </div>
+            </div>
+
+            <!-- Поля для режима ПОДБОР ДВИГАТЕЛЯ -->
+            <div id="motor-fields" class="row g-3 mt-2" style="display: none;">
+                <div class="col-md-6">
+                    <label for="motor-power" class="form-label fw-bold">Мощность насоса (кВт):</label>
+                    <input type="number" class="form-control" id="motor-power" name="pump_power"
+                           value="45" min="5" max="500" step="1" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="motor-voltage" class="form-label fw-bold">Напряжение (В, опционально):</label>
+                    <input type="number" class="form-control" id="motor-voltage" name="voltage"
+                           value="660" min="220" max="10000" step="10">
+                </div>
+                <div class="col-md-4">
+                    <label for="motor-service-factor" class="form-label fw-bold">Коэф. запаса:</label>
+                    <input type="number" class="form-control" id="motor-service-factor" name="service_factor"
+                           value="1.15" min="1.0" max="2.0" step="0.05" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="motor-min-efficiency" class="form-label fw-bold">Мин. КПД (%):</label>
+                    <input type="number" class="form-control" id="motor-min-efficiency" name="min_efficiency"
+                           value="80" min="50" max="98" step="1" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="motor-max-vibration" class="form-label fw-bold">Макс. вибрация (мм/с, опц.):</label>
+                    <input type="number" class="form-control" id="motor-max-vibration" name="max_vibration"
+                           value="4.5" min="1" max="20" step="0.1">
+                </div>
+            </div>
+
+            <!-- Поля для режима ПОДБОР ДЛЯ СКВАЖИНЫ -->
+            <div id="well-fields" class="row g-3 mt-2" style="display: none;">
+                <div class="col-md-6">
+                    <label for="well-select" class="form-label fw-bold">Скважина:</label>
+                    <select id="well-select" class="form-select" name="well_id" required>
+                        <option value="">-- Выберите скважину --</option>
+                        {% for well in wells %}
+                        <option value="{{ well.id }}">
+                            {{ well.name }} (глубина: {{ well.depth }} м, дебит: {{ well.formation_debit }} м³/сут)
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label for="target-flow" class="form-label fw-bold">Целевой расход (м³/сут):</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" id="target-flow" name="target_flow"
+                               placeholder="Оставьте пустым для использования пластового дебита"
+                               min="10" max="1000" step="5">
+                        <button class="btn btn-outline-secondary" type="button" id="use-recommended-flow"
+                                title="Использовать рекомендованный дебит">
+                            <i class="fas fa-magic"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Блок расчетных параметров скважины -->
+                <div id="well-calculations" class="col-12 mt-3" style="display: none;">
+                    <div class="card border-info">
+                        <div class="card-header bg-info text-white py-2">
+                            <h6 class="mb-0"><i class="fas fa-calculator me-2"></i>Расчетные параметры скважины</h6>
+                        </div>
+                        <div class="card-body py-2">
+                            <div class="row">
+                                <div class="col-md-3 col-6">
+                                    <div class="text-center p-1">
+                                        <small class="text-muted">Макс. дебит</small>
+                                        <h6 class="mb-0" id="calc-max-flow">—</h6>
+                                        <small>м³/сут</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 col-6">
+                                    <div class="text-center p-1">
+                                        <small class="text-muted">Реком. дебит</small>
+                                        <h6 class="mb-0" id="calc-rec-flow">—</h6>
+                                        <small>м³/сут</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 col-6">
+                                    <div class="text-center p-1">
+                                        <small class="text-muted">Глубина насоса</small>
+                                        <h6 class="mb-0" id="calc-pump-depth">—</h6>
+                                        <small>м</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 col-6">
+                                    <div class="text-center p-1">
+                                        <small class="text-muted">Треб. напор</small>
+                                        <h6 class="mb-0" id="calc-required-head">—</h6>
+                                        <small>м</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <label for="well-service-factor" class="form-label fw-bold">Коэф. запаса:</label>
+                    <input type="number" class="form-control" id="well-service-factor" name="service_factor"
+                           value="1.15" min="1.0" max="2.0" step="0.05" required>
+                </div>
+            </div>
+
+            <!-- Кнопка отправки -->
+            <div class="row mt-4">
+                <div class="col-12 text-center">
+                    <button type="submit" class="btn btn-primary btn-lg px-5">
+                        <i class="fas fa-search me-2"></i>Найти оборудование
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Карточка результатов -->
+<div class="card shadow-sm mt-4" id="results-card" style="display: none;">
+    <div class="card-header bg-success text-white">
+        <h5 class="mb-0"><i class="fas fa-list me-2"></i>Результаты подбора: <span id="results-count">0</span></h5>
+    </div>
+    <div class="card-body" id="results-body">
+        <!-- Индикатор загрузки -->
+        <div id="loading-spinner" class="text-center py-4" style="display: none;">
+            <output class="spinner-border text-primary"></output>
+            <p class="mt-2">Выполняется поиск...</p>
+        </div>
+        <!-- Контейнер для таблицы результатов -->
+        <div id="results-table-container"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Элементы управления
+    const selectionType = document.getElementById('selection-type');
+    const pumpFields = document.getElementById('pump-fields');
+    const motorFields = document.getElementById('motor-fields');
+    const wellFields = document.getElementById('well-fields');
+
+    const resultsCard = document.getElementById('results-card');
+    const resultsCount = document.getElementById('results-count');
+    const resultsContainer = document.getElementById('results-table-container');
+    const loadingSpinner = document.getElementById('loading-spinner');
+    const searchForm = document.getElementById('equipment-search-form');
+
+    // Элементы для режима скважины
+    const wellSelect = document.getElementById('well-select');
+    const targetFlow = document.getElementById('target-flow');
+    const calcBlock = document.getElementById('well-calculations');
+    const useRecommendedBtn = document.getElementById('use-recommended-flow');
+
+    // ===== ФУНКЦИЯ ПЕРЕКЛЮЧЕНИЯ ПОЛЕЙ =====
+    function toggleFields() {
+        const selectedType = selectionType.value;
+
+        pumpFields.style.display = 'none';
+        motorFields.style.display = 'none';
+        wellFields.style.display = 'none';
+
+        if (selectedType === 'pump') {
+            pumpFields.style.display = 'flex';
+        } else if (selectedType === 'motor') {
+            motorFields.style.display = 'flex';
+        } else if (selectedType === 'well') {
+            wellFields.style.display = 'flex';
+            if (wellSelect && wellSelect.value) {
+                loadWellCalculations(wellSelect.value);
+            }
+        }
+
+        // Очищаем результаты при смене типа
+        if (resultsCard) {
+            resultsCard.style.display = 'none';
+            resultsContainer.innerHTML = '';
+            resultsCount.textContent = '0';
+        }
+    }
+
+    // ===== ЗАГРУЗКА РАСЧЕТНЫХ ПАРАМЕТРОВ СКВАЖИНЫ =====
+    function loadWellCalculations(wellId) {
+        if (!wellId || !calcBlock) {
+            return;
+        }
+
+        calcBlock.style.display = 'block';
+
+        // Показываем загрузку
+        document.getElementById('calc-max-flow').innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        document.getElementById('calc-rec-flow').innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        document.getElementById('calc-pump-depth').innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        document.getElementById('calc-required-head').innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+        let url = `/api/wells/${wellId}/calculations/`;
+        if (targetFlow && targetFlow.value) {
+            url += `?target_flow=${targetFlow.value}`;
+        }
+
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('calc-max-flow').innerHTML =
+                    data.calculated_max_flow ? data.calculated_max_flow.toFixed(0) : '—';
+                document.getElementById('calc-rec-flow').innerHTML =
+                    data.calculated_recommended_flow ? data.calculated_recommended_flow.toFixed(0) : '—';
+                document.getElementById('calc-pump-depth').innerHTML =
+                    data.calculated_pump_depth ? data.calculated_pump_depth.toFixed(0) : '—';
+                document.getElementById('calc-required-head').innerHTML =
+                    data.calculated_required_head ? data.calculated_required_head.toFixed(0) : '—';
+
+                // Обновляем placeholder для целевого расхода
+                if (targetFlow && data.calculated_recommended_flow) {
+                    targetFlow.placeholder = `Реком. ${data.calculated_recommended_flow} м³/сут`;
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка загрузки расчетов:', error);
+                if (calcBlock) {
+                    calcBlock.style.display = 'none';
+                }
+            });
+    }
+
+    // ===== ИСПОЛЬЗОВАНИЕ РЕКОМЕНДОВАННОГО ДЕБИТА =====
+    if (useRecommendedBtn) {
+        useRecommendedBtn.addEventListener('click', function() {
+            const recFlow = document.getElementById('calc-rec-flow').textContent;
+            if (recFlow && recFlow !== '—' && !recFlow.includes('spinner') && targetFlow) {
+                targetFlow.value = parseFloat(recFlow);
+                // Обновляем расчеты с новым значением
+                if (wellSelect && wellSelect.value) {
+                    loadWellCalculations(wellSelect.value);
+                }
+            }
+        });
+    }
+
+    // ===== СОБЫТИЯ =====
+    if (selectionType) {
+        selectionType.addEventListener('change', toggleFields);
+    }
+
+    if (wellSelect) {
+        wellSelect.addEventListener('change', function() {
+            loadWellCalculations(this.value);
+            // Очищаем результаты при смене скважины
+            if (resultsCard) {
+                resultsCard.style.display = 'none';
+                resultsContainer.innerHTML = '';
+                resultsCount.textContent = '0';
+            }
+        });
+    }
+
+    if (targetFlow) {
+        targetFlow.addEventListener('input', function() {
+            if (wellSelect && wellSelect.value) {
+                // Задержка, чтобы не спамить запросами
+                clearTimeout(window.calcTimeout);
+                window.calcTimeout = setTimeout(() => {
+                    loadWellCalculations(wellSelect.value);
+                }, 500);
+            }
+        });
+    }
+
+    // Инициализация полей при загрузке
+    toggleFields();
+
+    // ===== ОБРАБОТЧИК ОТПРАВКИ ФОРМЫ =====
+    if (searchForm) {
+        searchForm.addEventListener('submit', function(e) {
+            e.preventDefault();  // ОЧЕНЬ ВАЖНО - отменяет перезагрузку страницы
+
+            // Показываем спиннер и скрываем предыдущие результаты
+            loadingSpinner.style.display = 'block';
+            resultsContainer.innerHTML = '';
+            resultsCard.style.display = 'none';
+
+            const selectedType = selectionType.value;
+            let apiUrl = '';
+            let formData = new FormData(searchForm);
+            let params = new URLSearchParams();
+
+            // Формируем URL и параметры в зависимости от типа подбора
+            if (selectedType === 'pump') {
+                apiUrl = '/api/pumps/find_suitable/';
+                params.append('required_flow', formData.get('required_flow'));
+                params.append('required_head', formData.get('required_head'));
+            }
+            else if (selectedType === 'motor') {
+                apiUrl = '/api/motors/find_for_pump/';
+                params.append('pump_power', formData.get('pump_power'));
+                if (formData.get('voltage')) {
+                    params.append('voltage', formData.get('voltage'));
+                }
+                params.append('service_factor', formData.get('service_factor'));
+                params.append('min_efficiency', formData.get('min_efficiency'));
+                if (formData.get('max_vibration')) {
+                    params.append('max_vibration', formData.get('max_vibration'));
+                }
+            }
+            else if (selectedType === 'well') {
+                apiUrl = '/api/pumps/select_for_well/';
+                params.append('well_id', formData.get('well_id'));
+                if (formData.get('target_flow')) {
+                    params.append('target_flow', formData.get('target_flow'));
+                }
+                params.append('service_factor', formData.get('well-service-factor'));
+            }
+
+            // Выполняем запрос
+            fetch(`${apiUrl}?${params.toString()}`)
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => {
+                            throw new Error(err.error || 'Ошибка сервера');
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    loadingSpinner.style.display = 'none';
+
+                    let results = [];
+                    let count = 0;
+
+                    if (selectedType === 'pump') {
+                        results = data.pumps || [];
+                        count = data.found_count || results.length;
+                    } else if (selectedType === 'motor') {
+                        results = data.motors || [];
+                        count = data.found_count || results.length;
+                    } else if (selectedType === 'well') {
+                        results = data.recommendations || [];
+                        count = data.found_count || results.length;
+                    }
+
+                    resultsCount.textContent = count;
+
+                    let tableHtml = '';
+
+                    if (results.length === 0) {
+                        tableHtml = '<div class="alert alert-info">Ничего не найдено. Попробуйте изменить параметры поиска</div>';
+                    } else {
+                        if (selectedType === 'pump') {
+                            tableHtml = generatePumpTable(results);
+                        } else if (selectedType === 'motor') {
+                            tableHtml = generateMotorTable(results);
+                        } else if (selectedType === 'well') {
+                            tableHtml = generateWellTable(results);
+                        }
+                    }
+
+                    resultsContainer.innerHTML = tableHtml;
+                    resultsCard.style.display = 'block';
+                })
+                .catch(error => {
+                    loadingSpinner.style.display = 'none';
+                    resultsContainer.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Ошибка: ${error.message}
+                        </div>
+                    `;
+                    resultsCard.style.display = 'block';
+                    resultsCount.textContent = '0';
+                });
+        });
+    }
+
+    // ===== ФУНКЦИИ ГЕНЕРАЦИИ ТАБЛИЦ =====
+    function generatePumpTable(pumps) {
+        let html = `
+            <table class="table table-striped table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Модель</th>
+                        <th>Производитель</th>
+                        <th>Номин. расход (м³/сут)</th>
+                        <th>Номин. напор (м)</th>
+                        <th>Макс. КПД (%)</th>
+                        <th>Раб. диапазон</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        pumps.forEach(pump => {
+            html += `
+                <tr>
+                    <td><strong>${pump.harka_stupen || pump.name || '—'}</strong></td>
+                    <td>${pump.zavod || pump.manufacturer || '—'}</td>
+                    <td>${pump.nominal_range || pump.nominal_flow || '—'}</td>
+                    <td>${pump.nominal_head || pump.head || '—'}</td>
+                    <td>
+                        <span class="badge bg-${(pump.max_efficiency || 0) >= 40 ? 'success' :
+                                               (pump.max_efficiency || 0) >= 30 ? 'warning' : 'danger'}">
+                            ${pump.max_efficiency || pump.efficiency || '—'}%
+                        </span>
+                    </td>
+                    <td>${pump.left_range || '—'} - ${pump.right_range || '—'}</td>
+                    <td>
+                        <a href="/pumps/${pump.id}/" class="btn btn-sm btn-info">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                    </td>
+                </tr>
+            `;
+        });
+
+        html += `</tbody></table>`;
+        return html;
+    }
+
+    function generateMotorTable(motors) {
+        let html = `
+            <table class="table table-striped table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Модель</th>
+                        <th>Производитель</th>
+                        <th>Мощность (кВт)</th>
+                        <th>Напряжение (В)</th>
+                        <th>КПД (%)</th>
+                        <th>cos φ</th>
+                        <th>Вибрация (мм/с)</th>
+                        <th>Совпадение</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        motors.forEach(motor => {
+            let vibColor = 'success';
+            if (motor.vibration_level > 7.1) vibColor = 'danger';
+            else if (motor.vibration_level > 4.5) vibColor = 'warning';
+
+            let efficiency = motor.efficiency || 0;
+            let efficiencyClass = 'danger';
+            if (efficiency >= 90) efficiencyClass = 'success';
+            else if (efficiency >= 85) efficiencyClass = 'info';
+            else if (efficiency >= 80) efficiencyClass = 'warning';
+
+            html += `
+                <tr>
+                    <td><strong>${motor.model || '—'}</strong></td>
+                    <td>${motor.manufacturer || '—'}</td>
+                    <td>${motor.nominal_power || motor.power || '—'}</td>
+                    <td>${motor.nominal_voltage || motor.voltage || '—'}</td>
+                    <td>
+                        <span class="badge bg-${efficiencyClass}">
+                            ${efficiency.toFixed(1)}%
+                        </span>
+                    </td>
+                    <td>${motor.power_factor || '—'}</td>
+                    <td>
+                        <span class="badge bg-${vibColor}">
+                            ${motor.vibration_level || '—'}
+                        </span>
+                    </td>
+                    <td>${motor.power_match_percentage || motor.match || '—'}%</td>
+                    <td>
+                        <a href="/motors/${motor.id}/" class="btn btn-sm btn-info">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                    </td>
+                </tr>
+            `;
+        });
+
+        html += `</tbody></table>`;
+        return html;
+    }
+
+    function generateWellTable(recommendations) {
+        let html = `
+            <table class="table table-striped table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Насос</th>
+                        <th>Двигатель</th>
+                        <th>Рабочая точка</th>
+                        <th>КПД насоса</th>
+                        <th>КПД двигателя</th>
+                        <th>Общий КПД</th>
+                        <th>Коэф. запаса</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        recommendations.forEach(rec => {
+            const pumpEfficiency = rec.pump_at_point?.efficiency || 0;
+            const motorEfficiency = rec.motor?.efficiency || 0;
+            const overallEfficiency = rec.overall_efficiency ||
+                (pumpEfficiency && motorEfficiency ? (pumpEfficiency * motorEfficiency / 100) : 0);
+
+            let overallClass = 'danger';
+            if (overallEfficiency >= 35) overallClass = 'success';
+            else if (overallEfficiency >= 30) overallClass = 'warning';
+
+            html += `
+                <tr>
+                    <td>
+                        <strong>${rec.pump?.name || rec.pump?.harka_stupen || '—'}</strong>
+                        <br><small class="text-muted">${rec.pump?.nominal_flow || ''} м³/сут</small>
+                    </td>
+                    <td>
+                        <strong>${rec.motor?.model || '—'}</strong>
+                        <br><small class="text-muted">${rec.motor?.power || ''} кВт</small>
+                    </td>
+                    <td>
+                        Q: ${rec.pump_at_point?.flow || rec.flow || '—'} м³/сут
+                        <br>H: ${rec.pump_at_point?.head || rec.head || '—'} м
+                    </td>
+                    <td>
+                        <span class="badge bg-${pumpEfficiency >= 40 ? 'success' : 'warning'}">
+                            ${pumpEfficiency.toFixed(1)}%
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge bg-${motorEfficiency >= 90 ? 'success' :
+                                               motorEfficiency >= 85 ? 'info' : 'warning'}">
+                            ${motorEfficiency.toFixed(1)}%
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge bg-${overallClass}">
+                            ${overallEfficiency.toFixed(1)}%
+                        </span>
+                    </td>
+                    <td>${rec.motor?.service_factor || rec.service_factor || '1.15'}</td>
+                    <td>
+                        <a href="/pumps/${rec.pump?.id}/" class="btn btn-sm btn-info" title="Просмотр насоса">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        <a href="/motors/${rec.motor?.id}/" class="btn btn-sm btn-success" title="Просмотр двигателя">
+                            <i class="fas fa-motor"></i>
+                        </a>
+                    </td>
+                </tr>
+            `;
+        });
+
+        html += `</tbody></table>`;
+        return html;
+    }
+});
+</script>
+{% endblock %}

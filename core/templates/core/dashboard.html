@@ -1,0 +1,260 @@
+{% extends "core/base.html" %}
+{% block title %}Панель управления - RoboWell{% endblock %}
+{% block content %}
+<div class="row mb-5">
+  <div class="col-lg-8">
+    <h1 class="display-4 fw-bold text-gradient mb-3">Система управления RoboWell</h1>
+    <p class="lead text-muted">Автоматическая система управления скважинами</p>
+  </div>
+</div>
+
+<!-- Карточки -->
+<div class="row g-4 mb-5">
+
+    <!-- Карточка скважин -->
+    <div class="col-md-6 col-xl-4">
+      <div class="card h-100 border-0 shadow-lg" style="background: linear-gradient(135deg, #667eea, #764ba2)">
+        <div class="card-body text-white">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+              <h5 class="card-title fs-4">Скважины</h5>
+              <h2 class="display-5 fw-bold">{{ wells_count }}</h2>
+              <p class="card-text opacity-75 mb-0">Всего скважин в системе</p>
+            </div>
+            <i class="bi bi-droplet fs-1 opacity-50"></i>
+          </div>
+          <a href="{% url 'well_list' %}" class="btn btn-light rounded-pill px-4 mt-3">
+            <i class="bi bi-arrow-right me-2"></i>Перейти к скважинам
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Карточка насосов -->
+    <div class="col-md-6 col-xl-4">
+      <div class="card h-100 border-0 shadow-lg" style="background: linear-gradient(135deg, #43e97b, #38f9d7)">
+        <div class="card-body text-white">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+              <h5 class="card-title fs-4">Насосы ЭЦН</h5>
+              <h2 class="display-5 fw-bold">{{ pumps_count }}</h2>
+              <p class="card-text opacity-75 mb-0">Моделей насосов в базе</p>
+            </div>
+            <i class="bi bi-gear-fill fs-1 opacity-50"></i>
+          </div>
+          <a href="{% url 'pump_list' %}" class="btn btn-light rounded-pill px-4 mt-3">
+            <i class="bi bi-arrow-right me-2"></i>Перейти к насосам
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Карточка двигателей -->
+    <div class="col-md-6 col-xl-4">
+      <div class="card h-100 border-0 shadow-lg" style="background: linear-gradient(135deg, #f093fb, #f5576c)">
+        <div class="card-body text-white">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+              <h5 class="card-title fs-4">Электродвигатели</h5>
+              <h2 class="display-5 fw-bold">{{ motors_count }}</h2>
+              <p class="card-text opacity-75 mb-0">Моделей двигателей в базе</p>
+            </div>
+            <i class="bi bi-lightning-charge-fill fs-1 opacity-50"></i>
+          </div>
+          <a href="{% url 'motor_list' %}" class="btn btn-light rounded-pill px-4 mt-3">
+            <i class="bi bi-arrow-right me-2"></i>Перейти к двигателям
+          </a>
+        </div>
+      </div>
+    </div>
+
+</div>
+
+<!-- Ряд для секции быстрых действий и информации о системе -->
+<div class="row g-4">
+  <!-- Колонка для быстрых действий -->
+  <div class="col-lg-{% if user.is_staff or user.is_superuser %}6{% else %}12{% endif %}">
+    <!-- Карточка для быстрых действий -->
+    <div class="card h-100 shadow-sm border-0">
+      <!-- Заголовок карточки для быстрых действий -->
+      <div class="card-header bg-white border-0 pt-4">
+        <h5 class="mb-0"><i class="bi bi-lightning-charge-fill me-2 text-primary"></i>Быстрые действия</h5>
+      </div>
+      <!-- Тело карточки -->
+      <div class="card-body">
+        <div class="d-grid gap-3">
+          <a href="{% url 'equipment_select' %}" class="btn btn-outline-primary btn-lg text-start rounded-pill">
+            <i class="bi bi-search me-2"></i>Подобрать оборудование
+          </a>
+          <a href="#" class="btn btn-outline-success btn-lg text-start rounded-pill">
+            <i class="bi bi-graph-up-arrow me-2"></i>Анализ эффективности
+          </a>
+          <a href="#" class="btn btn-outline-warning btn-lg text-start rounded-pill">
+            <i class="bi bi-graph-up-arrow me-2"></i>Просмотр уведомлений
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if user.is_staff or user.is_superuser %}
+  <!-- Колонка для информации о системе -->
+  <div class="col-lg-6">
+    <!-- Карточка для информации о системе -->
+    <div class="card h-100 shadow-sm border-0">
+      <!-- Заголовок карточки для информации о системе -->
+      <div class="card-header bg-white border-0 pt-4">
+        <h5 class='mb-0'><i class="bi bi-info-circle-fill me-2 text-primary"></i>Информация о системе</h5>
+      </div>
+      <!-- Тело карточки -->
+      <div class="card-body">
+        <table class="table table-hover mb-0">
+          <tr><th class="ps-0">Версия Django:</th><td>4.2.11</td></tr>
+          <tr><th class="ps-0">База данных:</th><td>SQLite / PostgreSQL</td></tr>
+          <tr><th class="ps-0">Документация API:</th><td><a href="/swagger/" target="_blank">Swagger UI</a> | <a href="/redoc/" target="_blank">ReDoc</a> </td></tr>
+          <tr><th class="ps-0">Последние данные телеметрии:</th><td><span id="last-telemetry-time">Загрузка...</span></td></tr>
+          <tr><th class="ps-0">Активные уведомления:</th><td><span id="active-alerts-count" class="badge bg-secondary">0</span></td></tr>
+        </table>
+        <!-- Контейнер для кнопки API -->
+        <div class="mt-4 d-grid">
+          <a href="/api/telemetry/latest/" target="_blank" class="btn btn-outline-info btn-lg text-start rounded-pill">
+            <i class="bi bi-database me-2"></i>Последние данные (API)
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Ряд для блока последних команд -->
+<div class="row mt-4">
+  <!-- Колонка для блока последних команд -->
+  <div class="col-12">
+    <!-- Карточка для последних команд -->
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-white border-0 pt-4">
+        <h5 class="mb-0"><i class="bi bi-history me-2 text-primary"></i>Последние команды</h5>
+      </div>
+      <div class="card-body">
+        <div id="recent-commands">Загрузка...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Ряд для блока чата с ИИ-ассистентом -->
+<div class="row mt-5">
+  <div class="col-12">
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-dark text-white border-0">
+        <div class="mb-0"><i class="bi bi-robot me-2"></i>ИИ-ассистент RoboWell</div>
+      </div>
+      <div class="card-body">
+        <div id="chat-messages" style="height: 300px; overflow-y: auto; border: 1px solid #dee2e6; padding: 10px; margin-bottom: 10px; border-radius: 10px">
+          <div class="text-muted">Задайте вопрос о скважинах, насосах или двигателях...</div>
+        </div>
+        <div class="input-group">
+          <input type="text" id="chat-input" class="form-control rounded-pill" placeholder="Например: какой самый мощный насос?">
+          <button class="btn btn-primary rounded-pill" type="button" id="send-btn">Отправить</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+  // Функция для обновления информации о системе
+  function updateSystemInfo() {
+    // Получаем временную метку последней телеметрии
+    fetch("/api/telemetry/?ordering=-timestamp&page_size=1")
+      .then(response => response.json())
+      .then(data => {
+        if (data.results && data.results.length > 0) {
+          const timestamp = new Date(data.results[0].timestamp);
+          document.getElementById("last-telemetry-time").textContent = timestamp.toLocaleString("ru-RU");
+        } else {
+          document.getElementById("last-telemetry-time").textContent = "Нет данных";
+        }
+      });
+
+    // Получаем количество непрочитанных уведомлений
+    fetch("/api/alerts/unread_count/")
+      .then(response => response.json())
+      .then(data => {
+        document.getElementById("active-alerts-count").textContent = data.count;
+        if (data.count > 0) {
+          document.getElementById("active-alerts-count").className = "badge bg-danger";
+        } else {
+          document.getElementById("active-alerts-count").className = "badge bg-success";
+        }
+      });
+
+    // Получаем последние команды
+    fetch("/api/command-logs/?ordering=-created_at&page_size=5")
+      .then((response) => response.json())
+      .then((data) => {
+        let html = '<table class="table table-sm">';
+        html += "<tr><th>Время</th><th>Скважина</th><th>Команда</th><th>Статус</th></tr>";
+
+        if (data.results && data.results.length > 0) {
+          data.results.forEach((cmd) => {
+            const time = new Date(cmd.created_at).toLocaleString("ru-RU");
+
+            // Определяем класс статуса (цвет бейджа)
+            let statusClass = "warning";
+            if (cmd.status === "success") {
+              statusClass = "success";
+            } else if (cmd.status === "error") {
+              statusClass = "danger";
+            }
+
+            // Определяем текст статуса
+            let statusText;
+            if (cmd.status === "success") {
+              statusText = "Успешно";
+            } else if (cmd.status === "error") {
+              statusText = "Ошибка";
+            } else {
+              statusText = "Отправлено";
+            }
+
+            // Определяем текст команды
+            let commandText;
+            if (cmd.command_type === "frequency_adjust") {
+              commandText = "Изменение частоты";
+            } else if (cmd.command_type === "start") {
+              commandText = "Запуск";
+            } else if (cmd.command_type === "stop") {
+              commandText = "Остановка";
+            } else if (cmd.command_type === "emergency_stop") {
+              commandText = "Аварийная остановка";
+            } else {
+              commandText = cmd.command_type;
+            }
+
+            html += `<tr>
+                        <td>${time}</td>
+                        <td>${cmd.well_name || "Неизвестно"}</td>
+                        <td>${commandText}</td>
+                        <td><span class="badge bg-${statusClass}">${statusText}</span></td>
+                    </tr>`;
+          });
+        } else {
+          html += '<tr><td colspan="4" class="text-center">Нет команд</td></tr>';
+        }
+        html += "</table>";
+        document.getElementById("recent-commands").innerHTML = html;
+      });
+  }
+
+  // Вызываем функцию после загрузки DOM
+  document.addEventListener("DOMContentLoaded", function() {
+    updateSystemInfo();
+  });
+
+  // И обновляем каждые 30 секунд
+  setInterval(updateSystemInfo, 30000);
+</script>
+{% endblock %}

@@ -1,253 +1,110 @@
 from django.contrib import admin
-from .models import Well, ElectricMotor, PumpCharacteristic
+from .models import Well, ElectricMotor, PumpCharacteristic, TelemetryData, Alert, CommandLog
+
+
+class TelemetryInline(admin.TabularInline):
+    model = TelemetryData
+    extra = 0
+    fields = ('timestamp', 'intake_pressure', 'intake_temperature', 'current_phase_a')
+    readonly_fields = ('timestamp',)
+    max_num = 10
 
 
 @admin.register(Well)
 class WellAdmin(admin.ModelAdmin):
-    @admin.display(description='Номер скважины', ordering='name')
-    def name_column(self, obj):
-        return obj.name
-
-    @admin.display(description='Глубина скважины, м', ordering='depth')
-    def depth_column(self, obj):
-        return obj.depth
-
-    @admin.display(description='Диаметр колонны, мм', ordering='diameter')
-    def diameter_column(self, obj):
-        return obj.diameter
-
-    @admin.display(description='Глубина спуска насоса, м', ordering='pump_depth')
-    def pump_depth_column(self, obj):
-        return obj.pump_depth
-
-    @admin.display(description='Динамический уровень, м', ordering='dynamic_level')
-    def dynamic_level_column(self, obj):
-        return obj.dynamic_level
-
-    @admin.display(description='Статический уровень, м', ordering='static_level')
-    def static_level_column(self, obj):
-        return obj.static_level
-
-    @admin.display(description='Дебит скважины, м³/сутки', ordering='formation_debit')
-    def formation_debit_column(self, obj):
-        return obj.formation_debit
-
-    @admin.display(description='Дата создания', ordering='created_at')
-    def created_at_column(self, obj):
-        return obj.created_at
-
-    @admin.display(description='Дата обновления', ordering='updated_at')
-    def updated_at_column(self, obj):
-        return obj.updated_at
+    """Админка для модели Well"""
 
     list_display = (
-        'name_column',
-        'depth_column',
-        'diameter_column',
-        'pump_depth_column',
-        'dynamic_level_column',
-        'formation_debit_column',
-        'created_at_column',
-        'updated_at_column'
+        'name', 'depth', 'reservoir_pressure', 'productivity_index',
+        'formation_debit', 'water_cut', 'is_active', 'created_at'
     )
 
-    list_filter = ('created_at',)
-    search_fields = ('name',)
-    ordering = ('name',)
+    list_filter = ('is_active', 'water_cut', 'created_at')
+    search_fields = ('name', 'external_id')
+    ordering = ('-created_at',)
+
+    inlines = [TelemetryInline]
 
     fieldsets = (
         ('Основная информация', {
-            'fields': ('name', 'depth', 'diameter'),
-            'description': 'Геологические и конструктивные параметры скважины'
+            'fields': ('name', 'external_id', 'is_active')
         }),
-        ('Эксплуатационные параметры', {
-            'fields': ('pump_depth', 'dynamic_level', 'static_level', 'formation_debit'),
-            'description': 'Параметры работы и продуктивности скважины'
+        ('Геологические параметры', {
+            'fields': ('depth', 'reservoir_pressure', 'productivity_index')
         }),
-        ('Метаданные', {
+        ('Параметры жидкости', {
+            'fields': ('oil_density', 'water_density', 'gas_factor', 'water_cut',
+                       'bubble_point_pressure', 'oil_volume_factor')
+        }),
+        ('Конструкция скважины', {
+            'fields': ('casing_inner_diameter', 'nkt_diameter', 'nkt_wall_thickness',
+                       'buffer_pressure', 'formation_debit', 'pump_depth')
+        }),
+        ('Системная информация', {
             'fields': ('created_at', 'updated_at'),
-            'description': 'Системная информация',
             'classes': ('collapse',)
-        })
+        }),
     )
 
     readonly_fields = ('created_at', 'updated_at')
     list_per_page = 20
+
+    # Действия в админке
+    actions = ['make_active', 'make_inactive']
+
+    def make_active(self, request, queryset):
+        queryset.update(is_active=True)
+
+    make_active.short_description = "Активировать выбранные скважины"
+
+    def make_inactive(self, request, queryset):
+        queryset.update(is_active=False)
+
+    make_inactive.short_description = "Деактивировать выбранные скважины"
+
+    # Кастомное отображение для обводненности
+    def water_cut_display(self, obj):
+        return f"{obj.water_cut}%"
+
+    water_cut_display.short_description = "Обводненность"
+    water_cut_display.admin_order_field = 'water_cut'
 
 
 @admin.register(ElectricMotor)
 class ElectricMotorAdmin(admin.ModelAdmin):
-    """
-    Административный интерфейс для электродвигателей.
-    """
-    list_display = (
-        'motor_type',
-        'manufacturer',
-        'nominal_power',
-        'nominal_voltage',
-        'nominal_current',
-        'is_active'
-    )
-
-    list_filter = (
-        'manufacturer',
-        'insulation_class',
-        'is_active'
-    )
-
-    search_fields = (
-        'motor_type',
-        'manufacturer'
-    )
-
-    fieldsets = (
-        ('Основные параметры', {
-            'fields': (
-                'motor_type',
-                'manufacturer',
-                'nominal_power',
-                'nominal_voltage',
-                'nominal_current'
-            )
-        }),
-        ('Электрические характеристики', {
-            'fields': (
-                'efficiency',
-                'power_factor',
-                'nominal_slip',
-                'insulation_resistance'
-            )
-        }),
-        ('Механические характеристики', {
-            'fields': (
-                'min_well_diameter',
-                'coolant_velocity',
-                'shaft_torque'
-            )
-        }),
-        ('Конструктивные параметры', {
-            'fields': (
-                'insulation_class',
-                'protection_class',
-                'weight',
-                'dimensions',
-                'sections_count'
-            )
-        }),
-        ('Системные', {
-            'fields': (
-                'is_active',
-                'created_at',
-                'updated_at'
-            ),
-            'classes': ('collapse',)
-        })
-    )
-
-    readonly_fields = ('created_at', 'updated_at')
+    list_display = ('model', 'manufacturer', 'nominal_power', 'nominal_voltage', 'efficiency', 'is_active')
+    list_filter = ('manufacturer', 'is_active')
+    search_fields = ('model', 'motor_id', 'manufacturer')
     list_per_page = 20
-
-    class Meta:
-        verbose_name = 'Электродвигатель'
-        verbose_name_plural = 'Электродвигатели'
 
 
 @admin.register(PumpCharacteristic)
 class PumpCharacteristicAdmin(admin.ModelAdmin):
-    """
-    Административный интерфейс для характеристик насосов ЭЦН.
-    """
-    list_display = (
-        'harka_stupen',
-        'cod',
-        'zavod',
-        'nominal_range',
-        'nominal_head',
-        'max_efficiency',  # Добавили
-        'max_efficiency_flow',  # Добавили
-        'stages_count',
-        'is_active'
-    )
-
-    list_filter = (
-        'zavod',
-        'material_stupen',
-        'is_active'
-    )
-
-    search_fields = (
-        'harka_stupen',
-        'cod',
-        'zavod'
-    )
-
-    fieldsets = (
-        ('Идентификация', {
-            'fields': (
-                'cod',
-                'harka_stupen',
-                'zavod',
-                'material_stupen',
-                'source_file'
-            )
-        }),
-        ('Рабочие диапазоны', {
-            'fields': (
-                'left_range',
-                'nominal_range',
-                'right_range',
-                'min_kpd_rosneft'
-            )
-        }),
-        ('Технические характеристики', {
-            'fields': (
-                'nominal_head',
-                'stages_count',
-                'housing_diameter',
-                'flow_part_material',
-                'max_efficiency',  # Добавили
-                'max_efficiency_flow'  # Добавили
-            )
-        }),
-        ('Характеристики (JSON)', {
-            'fields': (
-                'q_values',
-                'h_values',
-                'n_values',
-                'kpd_values'
-            ),
-            'description': 'Данные для построения характеристик'
-        }),
-        ('Оптимальные параметры', {  # Новая секция
-            'fields': (
-                'optimal_flow_range',
-            ),
-            'description': 'Автоматически рассчитанные оптимальные параметры'
-        }),
-        ('Системные', {
-            'fields': (
-                'is_active',
-                'created_at',
-                'updated_at'
-            ),
-            'classes': ('collapse',)
-        })
-    )
-
-    readonly_fields = (
-        'created_at',
-        'updated_at',
-        'optimal_flow_range'
-    )
-
+    list_display = ('harka_stupen', 'cod', 'zavod', 'nominal_range', 'max_efficiency', 'stages_count', 'is_active')
+    list_filter = ('zavod', 'material_stupen', 'is_active')
+    search_fields = ('harka_stupen', 'cod')
     list_per_page = 20
 
-    # Показываем предпросмотр характеристик
-    def view_characteristics(self, obj):
-        return f"Q: {len(obj.q_values)} точек, H: {len(obj.h_values)} точек"
 
-    view_characteristics.short_description = 'Точек характеристик'
+@admin.register(TelemetryData)
+class TelemetryDataAdmin(admin.ModelAdmin):
+    list_display = ('well', 'timestamp', 'intake_pressure', 'intake_temperature')
+    list_filter = ('well', 'timestamp')
+    ordering = ('-timestamp',)
+    list_per_page = 50
 
-    class Meta:
-        verbose_name = 'Насос ЭЦН'
-        verbose_name_plural = 'Насосы ЭЦН'
+
+@admin.register(Alert)
+class AlertAdmin(admin.ModelAdmin):
+    list_display = ('well', 'alert_type', 'severity', 'message', 'is_read', 'created_at')
+    list_filter = ('well', 'severity', 'alert_type', 'is_read')
+    ordering = ('-created_at',)
+    list_per_page = 50
+
+
+@admin.register(CommandLog)
+class CommandLogAdmin(admin.ModelAdmin):
+    list_display = ('well', 'command_type', 'status', 'created_at')
+    list_filter = ('well', 'command_type', 'status')
+    ordering = ('-created_at',)
+    list_per_page = 50

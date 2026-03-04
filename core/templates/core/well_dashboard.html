@@ -1,0 +1,197 @@
+{% extends "core/base.html" %}
+
+{% block title %}Дашборд {{ well.name }} - RoboWell{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Главная</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'well_list' %}">Скважины</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'well_detail' well.id %}">{{ well.name }}</a></li>
+            <li class="breadcrumb-item active">Дашборд</li>
+        </ol>
+    </nav>
+</div>
+
+<h1>Дашборд: {{ well.name }}</h1>
+
+<!-- Карточки с текущими параметрами -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary">
+            <div class="card-body">
+                <h6>Давление</h6>
+                <h3 id="current-pressure">—</h3>
+                <small>атм</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <h6>Температура</h6>
+                <h3 id="current-temp">—</h3>
+                <small>°C</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-warning">
+            <div class="card-body">
+                <h6>Вибрация X</h6>
+                <h3 id="current-vib-x">—</h3>
+                <small>мм/с</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <h6>Вибрация Y</h6>
+                <h3 id="current-vib-y">—</h3>
+                <small>мм/с</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Графики -->
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">Давление и температура</div>
+            <div class="card-body">
+                <div id="chart-pressure-temp" style="height:300px;"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">Токи фаз</div>
+            <div class="card-body">
+                <div id="chart-currents" style="height:300px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">Вибрация</div>
+            <div class="card-body">
+                <div id="chart-vibration" style="height:300px;"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">Мощность</div>
+            <div class="card-body">
+                <div id="chart-power" style="height:300px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-3">
+    <a href="{% url 'well_detail' well.id %}" class="btn btn-secondary">← Назад</a>
+    <button id="refresh-btn" class="btn btn-primary">Обновить</button>
+<!--    <button id="autoRefreshBtn" class="btn btn-outline-secondary ms-2">⏸ Пауза</button>-->
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.plot.ly/plotly-3.0.1.min.js"></script>
+<script>
+console.log("Plotly версия:", Plotly.version);
+
+function loadData() {
+    console.log("Загрузка данных...");
+
+    // Загрузка текущих параметров
+    fetch("{% url 'telemetry_chart' well.id %}?latest=true")
+        .then(response => response.json())
+        .then(data => {
+            console.log("Latest data:", data);
+            if (data.latest) {
+                document.getElementById('current-pressure').innerText = data.latest.pressure || '—';
+                document.getElementById('current-temp').innerText = data.latest.temperature || '—';
+                document.getElementById('current-vib-x').innerText = data.latest.vib_x || '—';
+                document.getElementById('current-vib-y').innerText = data.latest.vib_y || '—';
+            }
+        })
+        .catch(error => console.error("Ошибка загрузки latest:", error));
+
+    // Загрузка графиков
+    fetch("{% url 'telemetry_chart' well.id %}?type=all")
+        .then(response => response.json())
+        .then(data => {
+            console.log("Chart data:", data);
+            if (data.charts) {
+                // Давление и температура
+                if (data.charts.pressure_temp) {
+                    Plotly.newPlot('chart-pressure-temp',
+                        data.charts.pressure_temp.data,
+                        data.charts.pressure_temp.layout);
+                }
+
+                // Токи
+                if (data.charts.currents) {
+                    Plotly.newPlot('chart-currents',
+                        data.charts.currents.data,
+                        data.charts.currents.layout);
+                }
+
+                // Вибрация
+                if (data.charts.vibration) {
+                    Plotly.newPlot('chart-vibration',
+                        data.charts.vibration.data,
+                        data.charts.vibration.layout);
+                }
+
+                // Мощность
+                if (data.charts.power) {
+                    Plotly.newPlot('chart-power',
+                        data.charts.power.data,
+                        data.charts.power.layout);
+                }
+
+                console.log("Графики созданы");
+            }
+        })
+        .catch(error => console.error("Ошибка загрузки графиков:", error));
+}
+
+document.addEventListener('DOMContentLoaded', loadData);
+document.getElementById('refresh-btn').addEventListener('click', loadData);
+
+// Автообновление каждые 30 секунд
+let refreshInterval = setInterval(loadData, 30000);
+
+// Остановка автообновления при уходе со страницы
+window.addEventListener('beforeunload', function() {
+    clearInterval(refreshInterval);
+});
+
+// Кнопка для ручного управления автообновлением
+const toggleBtn = document.createElement('button');
+toggleBtn.className = 'btn btn-outline-secondary ms-2';
+toggleBtn.id = 'autoRefreshBtn';
+toggleBtn.textContent = '⏸ Пауза';
+toggleBtn.onclick = function() {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+        refreshInterval = null;
+        this.textContent = '▶ Старт';
+    } else {
+        refreshInterval = setInterval(loadData, 30000);
+        this.textContent = '⏸ Пауза';
+    }
+};
+
+// Добавить кнопку рядом с "Обновить"
+document.querySelector('.mt-3 .btn-primary').after(toggleBtn);
+</script>
+{% endblock %}

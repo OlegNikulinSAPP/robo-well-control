@@ -1,0 +1,191 @@
+{% extends "core/base.html" %}
+
+{% block title %}{{ pump.harka_stupen }} - RoboWell{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Главная</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'pump_list' %}">Насосы</a></li>
+            <li class="breadcrumb-item active">{{ pump.harka_stupen }}</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Основная информация</h5>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <tr>
+                        <th>Марка ступени:</th>
+                        <td>{{ pump.harka_stupen }}</td>
+                    </tr>
+                    <tr>
+                        <th>Код:</th>
+                        <td>{{ pump.cod }}</td>
+                    </tr>
+                    <tr>
+                        <th>Завод:</th>
+                        <td>{{ pump.zavod }}</td>
+                    </tr>
+                    <tr>
+                        <th>Материал:</th>
+                        <td>{{ pump.material_stupen }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Рабочие параметры</h5>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <tr>
+                        <th>Номинальная подача:</th>
+                        <td>{{ pump.nominal_range }} м³/сут</td>
+                    </tr>
+                    <tr>
+                        <th>Номинальный напор:</th>
+                        <td>{{ pump.nominal_head|default:"—" }} м</td>
+                    </tr>
+                    <tr>
+                        <th>Рабочий диапазон:</th>
+                        <td>{{ pump.left_range }} - {{ pump.right_range }} м³/сут</td>
+                    </tr>
+                    <tr>
+                        <th>Оптимальный диапазон:</th>
+                        <td>
+                            {% if pump.optimal_flow_range %}
+                                {{ pump.optimal_flow_range.0 }} - {{ pump.optimal_flow_range.1 }} м³/сут
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">КПД и эффективность</h5>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <tr>
+                        <th>Максимальный КПД:</th>
+                        <td>{{ pump.max_efficiency|default:"—" }}%</td>
+                    </tr>
+                    <tr>
+                        <th>Подача при max КПД:</th>
+                        <td>{{ pump.max_efficiency_flow|default:"—" }} м³/сут</td>
+                    </tr>
+                    <tr>
+                        <th>Минимальный КПД (Роснефть):</th>
+                        <td>{{ pump.min_kpd_rosneft }}%</td>
+                    </tr>
+                    <tr>
+                        <th>Количество ступеней:</th>
+                        <td>{{ pump.stages_count|default:"—" }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-warning">
+                <h5 class="mb-0">Рекомендуемый двигатель</h5>
+            </div>
+            <div class="card-body">
+                {% if pump.recommended_motor %}
+                    <table class="table">
+                        <tr>
+                            <th>Модель:</th>
+                            <td>{{ pump.recommended_motor.model }}</td>
+                        </tr>
+                        <tr>
+                            <th>Мощность:</th>
+                            <td>{{ pump.recommended_motor.nominal_power }} кВт</td>
+                        </tr>
+                        <tr>
+                            <th>Напряжение:</th>
+                            <td>{{ pump.recommended_motor.nominal_voltage }} В</td>
+                        </tr>
+                        <tr>
+                            <th>КПД:</th>
+                            <td>{{ pump.recommended_motor.efficiency }}%</td>
+                        </tr>
+                    </table>
+                {% else %}
+                    <p>Рекомендация не задана</p>
+                    <a href="#" class="btn btn-sm btn-primary">Подобрать двигатель</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0">Характеристики</h5>
+            </div>
+            <div class="card-body">
+                <p>Точек в характеристиках: {{ pump.q_values|length }}</p>
+                <pre class="bg-light p-3" style="max-height: 200px; overflow-y: scroll;">
+Q: {{ pump.q_values|slice:":10" }}...
+H: {{ pump.h_values|slice:":10" }}...
+N: {{ pump.n_values|slice:":10" }}...
+КПД: {{ pump.kpd_values|slice:":10" }}...
+                </pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Характеристика Q-H</h5>
+            </div>
+            <div class="card-body">
+                <div id="pump-chart" style="width:100%; height:500px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-3">
+    <a href="{% url 'pump_list' %}" class="btn btn-secondary">← Назад к списку</a>
+</div>
+
+{% block extra_js %}
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    fetch('{% url "pump_chart_data" pump.id %}')
+        .then(response => response.json())
+        .then(data => {
+            Plotly.newPlot('pump-chart', JSON.parse(data.graph));
+        });
+});
+</script>
+{% endblock %}
+{% endblock %}
