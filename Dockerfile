@@ -7,8 +7,9 @@ RUN pip install -r requirements.txt
 
 COPY . .
 
-# Удаляем swagger.py, если он остался в кэше
-RUN rm -f config/swagger.py
+# Принудительная очистка
+RUN find . -name "swagger.py" -type f -delete
+RUN pip install --upgrade requests
 
 RUN mkdir -p /app/static
 
