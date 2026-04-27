@@ -41,7 +41,7 @@ INSTALLED_APPS = [
     'django_filters',
     'core',
     'rest_framework',
-    'drf_yasg',
+    'drf_spectacular',
     'django_celery_results',
 ]
 
@@ -136,6 +136,7 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',  # ← ЭТО НОВАЯ СТРОКА
 }
 
 # Celery settings
@@ -146,3 +147,11 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
+
+# drf-spectacular settings
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Robo Well Control API',
+    'DESCRIPTION': 'API для управления скважинами',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+}
