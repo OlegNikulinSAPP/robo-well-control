@@ -1,82 +1,136 @@
 import requests
 import logging
 from datetime import datetime
-from django.conf import settings
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from core.models import Well, TelemetryData
-from core.services.alert_service import AlertService
+
 
 logger = logging.getLogger(__name__)
 
 
 class TelemetryAPIClient:
     """
-    Клиент для получения телеметрии скважин из внешнего API.
+    Клиент для параллельного получения телеметрии скважин из внешнего API
     """
-
-    def __init__(self, api_url=None, api_key=None):
+    def __init__(self, api_url=None, api_key=None, max_workers=5):
         self.api_url = 'http://62.217.179.82:1337'
         self.api_key = 'api-wellmon-8f3b1a4e-dc2f-4b8a-9c1d-4e5f6g7h8i9j'
+        self.max_workers = max_workers
         self.headers = {
             'Authorization': f'Bearer {self.api_key}',
             'Content-Type': 'application/json'
         }
 
-    def fetch_well_telemetry(self, well_id):
-        """
-        Получение телеметрии для одной скважины.
-        """
-        try:
-            url = f"{self.api_url}/public-api/wells/{well_id}/modbus-data/"
-            print(f"Отправка запроса: {url}")
+    def _get_wells_to_poll(self):
+        """Получить список активных скважин с external_id для опроса"""
+        return Well.objects.filter(  # noqa
+            is_active=True,
+            external_id__isnull=False
+        )
 
+    def _fetch_single_well(self, well):
+        """Получить телеметрию для одной скважины."""
+        try:
+            url = f"{self.api_url}/public-api/wells/{well.external_id}/modbus-data/"
             response = requests.get(
                 url,
                 headers=self.headers,
                 timeout=100
             )
-
-            print(f"Статус ответа: {response.status_code}")
-
             if response.status_code == 200:
                 data = response.json()
-                print("УСПЕХ! Данные получены")
-                print(f"Тип data: {type(data)}")
-                for i in data:
-                    print(i)
-
-                return self.save_telemetry(data, well_id)
-            else:
-                print(f"Ошибка API: {response.status_code}")
-                return None
-
-        except Exception as e:
-            print(f"Ошибка запроса: {e}")
+                print(f"ТИП: {type(data)}")
+                print(f"КЛЮЧИ: {data.keys() if isinstance(data, dict) else 'ЭТО СПИСОК'}")
+                return self._save_telemetry(data, well)
             return None
 
-    def fetch_all_wells(self):
-        """
-        Получение телеметрии для всех скважин из БД.
-        """
+        except requests.exceptions.Timeout:
+            logger.error(f"Таймаут при запросе скважины {well.external_id}")
+            return None
+        except Exception as e:
+            logger.error(f"Ошибка при запросе скважины {well.external_id}: {e}")
+            return None
+
+    def fetch_all_wells_parallel(self):
+        """Параллельный сбор телеметрии со всех активных скважин."""
         results = {'success': [], 'failed': []}
 
-        # Берем все скважины из нашей БД
-        wells = Well.objects.all()
+        print(f"🔥 Тип self в fetch_all_wells_parallel: {type(self)}")
+        print(f"🔥 self.__dict__: {self.__dict__}")
 
-        for well in wells:
-            if hasattr(well, 'external_id') and well.external_id:
-                result = self.fetch_well_telemetry(well.external_id)
-                if result:
-                    results['success'].append(well.external_id)
-                else:
+        wells = self._get_wells_to_poll()
+
+        if not wells:
+            logger.warning("Нет активных скважин для опроса")
+            return results
+
+        logger.info(f"Начинаю параллельный опрос {len(wells)} скважин, воркеров: {self.max_workers}")
+
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            future_to_well = {
+                executor.submit(self._fetch_single_well, well): well
+                for well in wells
+            }
+
+            for future in as_completed(future_to_well):
+                well = future_to_well[future]
+                try:
+                    result = future.result(timeout=5)
+                    if result:
+                        results['success'].append(well.external_id)
+                    else:
+                        results['failed'].append(well.external_id)
+                except Exception as e:
+                    logger.error(f"Ошибка при обработке результата для скважины {well.external_id}: {e}")
                     results['failed'].append(well.external_id)
 
+        logger.info(f"Опрос завершен. Успешно: {len(results['success'])}, Ошибок: {len(results['failed'])}")
         return results
 
+    def _save_telemetry(self, data, well):
+        try:
+            print(f"💾 СОХРАНЕНИЕ для скважины {well.external_id}")
+
+            if 'data' in data:
+                telemetry_data = data['data']
+            else:
+                telemetry_data = data
+
+            parsed = self.parse_telemetry(telemetry_data, well.id)
+            print(f"📝 parsed timestamp: {parsed['timestamp']}")
+
+            telemetry = TelemetryData.objects.create(
+                well=well,
+                external_id=str(well.id),
+                timestamp=datetime.fromisoformat(parsed['timestamp']),
+                current_phase_a=parsed.get('current_phase_a'),
+                current_phase_b=parsed.get('current_phase_b'),
+                current_phase_c=parsed.get('current_phase_c'),
+                active_power=parsed.get('active_power'),
+                frequency=parsed.get('frequency'),
+                intake_pressure=parsed.get('intake_pressure'),
+                intake_temperature=parsed.get('intake_temperature'),
+                motor_temperature=parsed.get('motor_temperature'),
+                vibration_x=parsed.get('vibration_x'),
+                vibration_y=parsed.get('vibration_y'),
+                raw_data=data
+            )
+
+            print(f"✅ СОХРАНЕНО! ID={telemetry.id}, timestamp={telemetry.timestamp}")
+            print(f"   давление={telemetry.intake_pressure}, температура={telemetry.intake_temperature}")
+
+            from core.services.alert_service import AlertService
+            AlertService.check_telemetry(telemetry)
+
+            return True
+
+        except Exception as e:
+            print(f"❌ ОШИБКА СОХРАНЕНИЯ: {e}")
+            logger.error(f"Ошибка сохранения телеметрии для скважины {well.external_id}: {e}")
+            return False
+
     def parse_telemetry(self, data, well_id):
-        """
-        Парсинг данных телеметрии.
-        data - словарь с полями coils, input_statuses, holding_registers, input_registers
-        """
+        """Преобразовать сырые данные API в структурированный словарь."""
         result = {
             'well_id': well_id,
             'timestamp': datetime.now().isoformat(),
@@ -92,85 +146,34 @@ class TelemetryAPIClient:
             'frequency': None,
         }
 
-        # Парсим input_registers (измерения)
-        if 'input_registers' in data:
-            reg_data = data['input_registers']
-            # Токи (адреса 4-6 - полный ток фаз)
-            if 'Полный ток двигателя фазы А' in reg_data:
-                result['current_phase_a'] = reg_data['Полный ток двигателя фазы А']['raw_value'] * 0.1
-            if 'Полный ток двигателя фазы B' in reg_data:
-                result['current_phase_b'] = reg_data['Полный ток двигателя фазы B']['raw_value'] * 0.1
-            if 'Полный ток двигателя фазы C' in reg_data:
-                result['current_phase_c'] = reg_data['Полный ток двигателя фазы C']['raw_value'] * 0.1
+        if 'input_registers' not in data:
+            return result
 
-            # Мощность
-            if 'Активная мощность' in reg_data:
-                result['active_power'] = reg_data['Активная мощность']['raw_value'] * 0.1
+        reg_data = data['input_registers']
 
-            # Давление на приеме (адрес 122)
-            if 'Давление на приеме насоса' in reg_data:
-                mpa = reg_data['Давление на приеме насоса']['raw_value'] * 0.01
-                result['intake_pressure'] = round(mpa * 9.87, 2)
+        # Словарь соответствий: ключ в API -> (поле в result, множитель)
+        mapping = {
+            'Полный ток двигателя фазы А': ('current_phase_a', 0.1),
+            'Полный ток двигателя фазы B': ('current_phase_b', 0.1),
+            'Полный ток двигателя фазы C': ('current_phase_c', 0.1),
+            'Активная мощность': ('active_power', 0.1),
+            'Давление на приеме насоса': ('intake_pressure', 0.01),  # особый случай, позже пересчитаем
+            'Температура жидкости на приеме насоса': ('intake_temperature', 0.01),
+            'Температура двигателя': ('motor_temperature', 0.01),
+            'Вибрация по оси X': ('vibration_x', 1),
+            'Вибрация по оси Y': ('vibration_y', 1),
+            'Частота питания ПЭД': ('frequency', 0.01),
+        }
 
-            # Температуры
-            if 'Температура жидкости на приеме насоса' in reg_data:
-                result['intake_temperature'] = reg_data['Температура жидкости на приеме насоса']['raw_value'] * 0.01
-            if 'Температура двигателя' in reg_data:
-                result['motor_temperature'] = reg_data['Температура двигателя']['raw_value'] * 0.01
+        for api_key, (result_field, multiplier) in mapping.items():
+            if api_key in reg_data:
+                raw_value = reg_data[api_key]['raw_value']
+                value = raw_value * multiplier
 
-            # Вибрация
-            if 'Вибрация по оси X' in reg_data:
-                result['vibration_x'] = reg_data['Вибрация по оси X']['raw_value']
-            if 'Вибрация по оси Y' in reg_data:
-                result['vibration_y'] = reg_data['Вибрация по оси Y']['raw_value']
+                # Особая обработка для давления (перевод из МПа в атм)
+                if api_key == 'Давление на приеме насоса':
+                    value = round(value * 9.87, 2)  # МПа → атм
 
-            # Частота (адрес 56)
-            if 'Частота питания ПЭД' in reg_data:
-                result['frequency'] = reg_data['Частота питания ПЭД']['raw_value'] * 0.01
+                result[result_field] = value
 
         return result
-
-    def save_telemetry(self, data, well_id):
-        """
-        Сохранение телеметрии в БД.
-        """
-        # Извлекаем внутренние данные из обертки
-        if 'data' in data:
-            telemetry_data = data['data']
-        else:
-            telemetry_data = data
-
-        parsed = self.parse_telemetry(telemetry_data, well_id)
-        print(f"Распарсено: {parsed}")
-
-        try:
-            well = Well.objects.get(id=well_id)
-            print(f"Найдена скважина: {well.name}")
-
-            telemetry = TelemetryData.objects.create(
-                well=well,
-                external_id=str(well_id),
-                timestamp=datetime.fromisoformat(parsed['timestamp']),
-                current_phase_a=parsed.get('current_phase_a'),
-                current_phase_b=parsed.get('current_phase_b'),
-                current_phase_c=parsed.get('current_phase_c'),
-                active_power=parsed.get('active_power'),
-                frequency=parsed.get('frequency'),
-                intake_pressure=parsed.get('intake_pressure'),
-                intake_temperature=parsed.get('intake_temperature'),
-                motor_temperature=parsed.get('motor_temperature'),
-                vibration_x=parsed.get('vibration_x'),
-                vibration_y=parsed.get('vibration_y'),
-                raw_data=data
-            )
-            print(f"\n✅ СОХРАНЕНА ЗАПИСЬ ID: {telemetry.id}")
-            print(f"   Давление: {telemetry.intake_pressure}")
-            print(f"   Температура: {telemetry.intake_temperature}")
-            print(f"   Ток A: {telemetry.current_phase_a}")
-            print(f"   Вибрация X: {telemetry.vibration_x}\n")
-
-            return True
-
-        except Exception as e:
-            print(f"❌ Ошибка: {e}")
-            return False

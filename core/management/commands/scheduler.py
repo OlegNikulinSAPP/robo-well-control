@@ -45,6 +45,5 @@ class Command(BaseCommand):
                 self.stdout.write("Активные задачи:")
                 for job in jobs:
                     self.stdout.write(f"  - {job.name} (id: {job.id})")
-                    self.stdout.write(f"    Следующий запуск: {job.next_run_time}")
             else:
                 self.stdout.write("Нет активных задач")

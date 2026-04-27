@@ -5,11 +5,9 @@ from .models import Well, TelemetryData, Alert, CommandLog
 class WellSerializer(serializers.ModelSerializer):
     """
     Сериализатор для модели Well.
-
     Преобразует объекты модели Well в JSON и обратно.
     Включает все поля модели для чтения и записи.
     """
-
     class Meta:
         model = Well
         fields = '__all__'
@@ -18,13 +16,10 @@ class WellSerializer(serializers.ModelSerializer):
     def validate_depth(self, value):
         """
         Валидация глубины скважины.
-
         Args:
             value: Значение глубины
-
         Returns:
             float: Проверенное значение
-
         Raises:
             serializers.ValidationError: Если глубина некорректна
         """
@@ -37,10 +32,8 @@ class WellSerializer(serializers.ModelSerializer):
     def validate_diameter(self, value):
         """
         Валидация диаметра колонны.
-
         Args:
             value: Значение диаметра
-
         Returns:
             float: Проверенное значение
         """
@@ -53,10 +46,8 @@ class WellSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         """
         Кастомизация вывода JSON.
-
         Args:
             instance: Объект модели Well
-
         Returns:
             dict: Словарь с данными для JSON
         """
@@ -73,13 +64,11 @@ class WellSerializer(serializers.ModelSerializer):
 
 class WellListSerializer(serializers.ModelSerializer):
     """
-    Упрощенный сериализатор для модели Well.
-
+    Упрощенный сериализатор для модели Well
     Преобразует объекты модели Well в JSON и обратно.
     Используется при выводе списка для уменьшения объема данных.
     Включает только ключевые параметры.
     """
-
     class Meta:
         model = Well
         fields = ('id', 'name', 'depth', 'pump_depth', 'formation_debit', 'is_active')
@@ -87,10 +76,8 @@ class WellListSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         """
         Кастомизация вывода JSON.
-
         Args:
             instance: Объект модели Well
-
         Returns:
             dict: Словарь с данными для JSON
         """
@@ -141,20 +128,17 @@ class WellDetailSerializer(serializers.ModelSerializer):
         return obj.get_max_possible_flow()
 
     def get_calculated_recommended_flow(self, obj):
-        """Рекомендуемый дебит (80% от максимального)"""
+        """Рекомендуемый дебит"""
         return obj.get_recommended_flow()
 
     def get_calculated_pump_depth(self, obj):
         """Глубина спуска насоса"""
-        # Можно передать target_flow через context
         flow = self.context.get('target_flow') if hasattr(self, 'context') else None
         return obj.get_pump_depth(flow)
 
     def get_calculated_required_head(self, obj):
         """Рекомендуемый напор насоса"""
         flow = self.context.get('target_flow') if hasattr(self, 'context') else None
-        if flow is None:
-            flow = obj.get_recommended_flow()
         return obj.calculate_required_head(flow)
 
     def get_mixture_density(self, obj):
@@ -164,6 +148,7 @@ class WellDetailSerializer(serializers.ModelSerializer):
     def get_min_intake_pressure(self, obj):
         """Минимальное давление на приеме насоса"""
         return obj.get_min_intake_pressure()
+
 
 
 class TelemetrySerializer(serializers.ModelSerializer):
@@ -187,6 +172,10 @@ class TelemetrySerializer(serializers.ModelSerializer):
         return obj.current_unbalance()
 
 
+from rest_framework import serializers
+from .models import TelemetryData
+
+
 class AlertSerializer(serializers.ModelSerializer):
     well_name = serializers.CharField(source='well.name', read_only=True)
 
@@ -199,5 +188,5 @@ class CommandLogSerializer(serializers.ModelSerializer):
     well_name = serializers.CharField(source='well.name', read_only=True)
 
     class Meta:
-        model =  CommandLog
+        model = CommandLog
         fields = '__all__'

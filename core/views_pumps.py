@@ -202,7 +202,7 @@ class PumpCharacteristicViewSet(viewsets.ModelViewSet):
                     'min_efficiency': min_efficiency,
                 },
                 'found_count': len(suitable_pumps),
-                'pumps': suitable_pumps[:10],
+                'pumps': suitable_pumps,
             })
 
         except ValueError as e:
@@ -428,10 +428,10 @@ class PumpCharacteristicViewSet(viewsets.ModelViewSet):
 
             pump_head = pump_params['h']
 
-            # if pump_head < required_head * 0.95:  # допуск 5%
-            #     continue
-            # if pump_head > required_head * 1.3:  # запас >30% - неэкономично
-            #     continue
+            if pump_head < required_head * 0.95:  # допуск 5%
+                continue
+            if pump_head > required_head * 1.3:  # запас >30% - неэкономично
+                continue
 
             # Расчет мощности
             power_data = pump.calculate_power_consumption(target_flow)
@@ -470,7 +470,9 @@ class PumpCharacteristicViewSet(viewsets.ModelViewSet):
                         'model': best_motor.model,
                         'power': best_motor.nominal_power,
                         'efficiency': best_motor.efficiency,
-                        'service_factor': round(best_motor.nominal_power / power_data['shaft_power_kw'], 2)
+                        'service_factor': round(
+                            best_motor.nominal_power / power_data['shaft_power_kw'], 2
+                            ) if power_data['shaft_power_kw'] and power_data['shaft_power_kw'] > 0 else 0
                     },
                     'overall_efficiency': overall_efficiency
                 })

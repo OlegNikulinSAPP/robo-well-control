@@ -1,129 +1,153 @@
 from django.db import models
-from django.core.exceptions import ValidationError
-from django.core.validators import MinValueValidator, MaxValueValidator  # добавить эту строку
+from django.core.validators import MinValueValidator, MaxValueValidator
+from datetime import datetime
 import math
+from functools import wraps
+
+
+DEFAULT_PRESSURE_FRACTION = 0.7   # доля от пластового давления при отсутствии КП
+MIN_BOTTOM_HOLE_PRESSURE = 12.0    # минимальное забойное давление, МПа
+GRAVITY = 9.81                    # ускорение свободного падения, м/с2
+SECONDS_IN_DAY = 86400
+DEFAULT_FLOW = 100                # дебит по умолчанию
+MIN_INTAKE_PRESSURE = 3           # минимальное значение давления на приеме насоса по умолчанию
+MPA_TO_PA = 1e6                   # перевод мегапаскалей в паскали
+WATER_KINEMATIC_VISCOSITY = 1e-6  # кинематическая вязкость воды, м²/с при 20°C
+
+
+def with_defaults(func):
+    """
+    Декоратор для автоматической подстановки значений по умолчанию
+    для параметров target_flow и intake_pressure.
+    Если параметры не переданы или равны None, подставляются:
+    - target_flow: результат get_recommended_flow()
+    - intake_pressure: результат get_min_intake_pressure()
+    """
+    @wraps(func)
+    def wrapper(self, target_flow=None, intake_pressure=None, **kwargs):
+        flow = target_flow
+        pressure = intake_pressure
+
+        # Определяем target_flow
+        if flow is None:
+            flow = self.get_recommended_flow()
+
+        # Определяем intake_pressure
+        if pressure is None:
+            pressure = self.get_min_intake_pressure()
+
+        return func(self, target_flow=flow, intake_pressure=pressure, **kwargs)
+
+    return wrapper
 
 
 class Well(models.Model):
     """
-    Нефтяная скважина
+    Нефтяная скважина.
     Хранит геологические и эксплуатационные параметры скважины
     """
-
-    # --- ОСНОВНАЯ ИНФОРМАЦИЯ (обязательная) ---
+    # --- Основная информация (обязательная) ---
     name = models.CharField(
         max_length=100,
         unique=True,
-        verbose_name="Название скважины",
-        help_text="Уникальное название скважины"
+        verbose_name='Название (номер) скважины',
+        help_text='Уникальное название (номер) скважины'
     )
-
     external_id = models.CharField(
         max_length=100,
-        verbose_name="ID во внешней системе",
-        help_text="Идентификатор скважины во внешнем API",
+        verbose_name='ID во внешней системе',
+        help_text='Идентификатор скважины во внешнем API',
         blank=True,
         null=True,
         unique=True
     )
-
     is_active = models.BooleanField(
         default=True,
-        verbose_name="Активна",
-        help_text="Скважина находится в эксплуатации"
+        verbose_name='Скважина в эксплуатации',
+        help_text='Скважина активна и участвует в добыче'
     )
 
     # --- ГЕОЛОГИЧЕСКИЕ ПАРАМЕТРЫ (обязательные для расчетов) ---
     depth = models.FloatField(
-        verbose_name="Глубина скважины",
-        help_text="Глубина до забоя (кровли пласта), м"
+        verbose_name='Глубина скважины',
+        help_text='Глубина до забоя (кровли пласта), м'
     )
-
     reservoir_pressure = models.FloatField(
-        verbose_name="Пластовое давление",
-        help_text="Давление в продуктивном пласте, МПа"
+        verbose_name='Пластовое давление',
+        help_text='Давление в продуктивном пласте, МПа'
     )
-
     productivity_index = models.FloatField(
-        verbose_name="Коэффициент продуктивности",
-        help_text="K_прод, м³/сут·МПа"
+        verbose_name='Коэффициент продуктивности',
+        help_text='K_прод, м3/сут*МПа'
     )
-
     casing_inner_diameter = models.FloatField(
-        verbose_name="Внутренний диаметр эксплуатационной колонны",
-        help_text="Внутренний диаметр обсадной колонны, мм"
+        verbose_name='Внутренний диаметр эксплуатационной колонны',
+        help_text='Внутренний диаметр обсадной колонны, мм'
     )
 
     # --- ПАРАМЕТРЫ ЖИДКОСТИ (обязательные) ---
     oil_density = models.FloatField(
-        verbose_name="Плотность нефти",
-        help_text="Плотность сепарированной нефти в поверхностных условиях, кг/м³",
+        verbose_name='Плотность нефти',
+        help_text='Плотность сепарированной нефти в поверхностных условиях, кг/м³',
         default=850.0
     )
-
     water_density = models.FloatField(
-        verbose_name="Плотность воды",
-        help_text="Плотность пластовой воды, кг/м³",
+        verbose_name='Плотность воды',
+        help_text='Плотность пластовой воды, кг/м³',
         default=1170.0
     )
-
     gas_factor = models.FloatField(
-        verbose_name="Газовый фактор",
-        help_text="Газосодержание, м³/т",
+        verbose_name='Газовый фактор',
+        help_text='Газосодержание м³/т',
         default=50.0
     )
-
     water_cut = models.FloatField(
-        verbose_name="Обводненность",
-        help_text="Объемная доля воды в продукции, %",
+        verbose_name='Обводненность',
+        help_text='Объемная доля воды в продукции, %',
         default=0.0,
         validators=[MinValueValidator(0), MaxValueValidator(100)]
     )
 
     # --- ПАРАМЕТРЫ ЖИДКОСТИ (опциональные, для точных расчетов) ---
     bubble_point_pressure = models.FloatField(
-        verbose_name="Давление насыщения",
-        help_text="Давление насыщения нефти газом, МПа",
+        verbose_name='Давление насыщения',
+        help_text='Давление насыщения нефти газом, МПа',
         null=True,
         blank=True
     )
-
     oil_volume_factor = models.FloatField(
-        verbose_name="Объемный коэффициент нефти",
-        help_text="Объемный коэффициент нефти при давлении насыщения",
+        verbose_name='Объемный коэффициент нефти',
+        help_text='Объемный коэффициент нефти при давлении насыщения',
         default=1.1
     )
 
-    # --- КОНСТРУКЦИЯ СКВАЖИНЫ (опциональные, есть значения по умолчанию) ---
+    # --- КОНСТРУКЦЯ СКВАЖИНЫ (опционально) ---
     nkt_diameter = models.FloatField(
-        verbose_name="Наружный диаметр НКТ",
-        help_text="Наружный диаметр насосно-компрессорных труб, мм",
+        verbose_name='Наружный диаметр НКТ',
+        help_text='Наружный диаметр насосно-компрессорных труб, мм',
         default=73.0
     )
-
     nkt_wall_thickness = models.FloatField(
-        verbose_name="Толщина стенки НКТ",
-        help_text="Толщина стенки насосно-компрессорных труб, мм",
+        verbose_name='Толщина стенки НКТ',
+        help_text='Толщина стенки насосно-компрессорных труб, мм',
         default=5.5
     )
-
     buffer_pressure = models.FloatField(
-        verbose_name="Буферное давление",
-        help_text="Давление на устье скважины, МПа",
+        verbose_name='Буферное давление',
+        help_text='Давление на устье скважины, МПа',
         default=1.0
     )
 
-    # --- ЭКСПЛУАТАЦИОННЫЕ ПАРАМЕТРЫ (опциональные) ---
+    # --- ЭКСПЛУАТАЦИОННЫЕ ПАРАМЕТРЫ (опционально) ---
     formation_debit = models.FloatField(
-        verbose_name="Пластовый дебит",
-        help_text="Плановый или фактический дебит скважины, м³/сут",
+        verbose_name='Пластовый дебит',
+        help_text='Пластовый или фактический дебит скважины м3/сут',
         null=True,
         blank=True
     )
-
     pump_depth = models.FloatField(
-        verbose_name="Глубина спуска насоса",
-        help_text="Глубина установки насоса, м. Если не указана - рассчитывается автоматически",
+        verbose_name='Глубина спуска насоса',
+        help_text='Глубина установки насоса, м. Если не указана - рассчитывается автоматически',
         null=True,
         blank=True
     )
@@ -133,112 +157,252 @@ class Well(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = "Скважина"
-        verbose_name_plural = "Скважины"
+        verbose_name = 'Скважина'
+        verbose_name_plural = 'Скважины'
         ordering = ['name']
 
     def __str__(self):
         return self.name
 
-    # ===== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ДЛЯ РАСЧЕТОВ =====
+    @property
+    def has_telemetry(self):
+        return self.telemetry.exists()
 
+    # ==== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ДЛЯ РАСЧЕТОВ ====
     def _get_nkt_inner_diameter(self):
         """Внутренний диаметр НКТ, м"""
-        return (self.nkt_diameter - 2 * self.nkt_wall_thickness) / 1000
+        # Переводим мм в метры
+        inner_diameter_mm = self.nkt_diameter - 2 * self.nkt_wall_thickness  # noqa
+        return inner_diameter_mm / 1000
 
     def _get_casing_inner_diameter_m(self):
         """Внутренний диаметр эксплуатационной колонны, м"""
-        return self.casing_inner_diameter / 1000
+        return self.casing_inner_diameter / 1000  # noqa
 
     def _get_annular_area(self):
-        """Площадь межтрубного пространства, м²"""
-        D_cas = self._get_casing_inner_diameter_m()
-        d_nkt = self._get_nkt_inner_diameter()
-        return (math.pi / 4) * (D_cas**2 - d_nkt**2)
+        """Площадь межтрубного пространства, м². S = π/4 × (D² - d²)"""
+        casing_d = self._get_casing_inner_diameter_m()
+        nkt_d = self.nkt_diameter / 1000  # noqa
+        return (math.pi / 2) * (casing_d ** 2 - nkt_d ** 2)  # площадь кольца
 
-    def _get_motor_annular_area(self):
-        """Площадь сечения вокруг ПЭД, м²"""
-        D_cas = self._get_casing_inner_diameter_m()
-        motor_diameter = 0.117  # стандартный диаметр ПЭД, м
-        return (math.pi / 4) * (D_cas**2 - motor_diameter**2)
+    def _get_annular_area_for_motor(self, motor_diameter_m):
+        """Площадь сечения вокруг ПЭД заданного диаметра, м²"""
+        casing_d = self._get_casing_inner_diameter_m()
+        return (math.pi / 4) * (casing_d ** 2 - motor_diameter_m ** 2)
+
+    def _get_p_zab(self, target_flow):
+        """
+        Расчет забойного давления при заданном дебите.
+        Args:
+            target_flow: целевой дебит, м³/сут
+        Returns:
+            Забойное давление, атм
+        """
+        # Если есть все данные для расчета по притоку
+        if self.productivity_index and self.reservoir_pressure:
+            print('1', self.reservoir_pressure - target_flow / self.productivity_index)
+            return self.reservoir_pressure - target_flow / self.productivity_index  # noqa
+
+        # Если есть только пластовое давление
+        if self.reservoir_pressure:
+            print('2', self.reservoir_pressure * DEFAULT_PRESSURE_FRACTION)
+            return self.reservoir_pressure * DEFAULT_PRESSURE_FRACTION  # noqa
+        print('3', MIN_BOTTOM_HOLE_PRESSURE)
+        # Если нет данных, возвращаем минимум
+        return MIN_BOTTOM_HOLE_PRESSURE
+
+    def _get_fluid_velocity_in_nkt(self, target_flow):
+        """
+            Расчет скорости жидкости в НКТ.
+            Args:
+                target_flow: дебит жидкости, м³/сут
+            Returns:
+                Скорость жидкости, м/с
+            """
+        nkt_area = math.pi * self._get_nkt_inner_diameter() ** 2 / 4
+        return target_flow / (SECONDS_IN_DAY * nkt_area)
+
+    @with_defaults
+    def _get_dynamic_level(self, target_flow, intake_pressure, **kwargs):
+        """
+        Расчет динамического уровня жидкости в скважине.
+        Динамический уровень - расстояние от устья до уровня жидкости
+        в межтрубном пространстве при работе скважины.
+        Формула: H_дин = H_спуска - P_заб / (ρ * g)
+        где:
+            P_заб - забойное давление, МПа
+            ρ - плотность жидкости на приеме, кг/м³
+            g - ускорение свободного падения, м/с²
+        Перевод единиц: 1 МПа = 10⁶ Па
+        Args:
+            target_flow: целевой дебит, м³/сут
+            intake_pressure: давление на приеме насоса, МПа
+        Returns:
+            float: динамический уровень, м
+        """
+        props = self.get_fluid_properties_at_intake(target_flow, intake_pressure)
+        p_zab_mpa = self._get_p_zab(target_flow)
+        p_zab_pa = p_zab_mpa * MPA_TO_PA
+
+        pressure_head = p_zab_pa / (props['density'] * GRAVITY)
+
+        return self.depth - pressure_head  # noqa
+
+    def _get_reynolds_number(self, target_flow):
+        """
+        Расчет числа Рейнольдса для потока в НКТ.
+        Re = v * d / nu
+        Args:
+            target_flow: дебит жидкости, м³/сут
+        Returns:
+            float: число Рейнольдса (безразмерное)
+        """
+        velocity = self._get_fluid_velocity_in_nkt(target_flow)
+        diameter = self._get_nkt_inner_diameter()
+
+        return velocity * diameter / WATER_KINEMATIC_VISCOSITY
+
+    @staticmethod
+    def _calculate_friction_factor(re):
+        """
+        Расчет коэффициента гидравлического трения (λ) по числу Рейнольдса.
+        Ламинарный режим (Re < 2300): λ = 64/Re
+        Турбулентный режим (Re ≥ 2300): λ = 0.3164/Re^0.25 (Блазиус)
+        """
+        if re <= 0:
+            raise ValueError(f"Число Рейнольдса должно быть положительным: {re}")
+
+        if re < 2300:
+            return 64 / re
+
+        return 0.3164 / (re ** 0.25)
+
+    def _calculate_friction_loss(self, lambda_coef, velocity, length, gravity=GRAVITY):
+        """
+        Расчет потерь напора на трение по формуле Дарси-Вейсбаха
+        Args:
+            lambda_coef: коэффициент гидравлического трения
+            velocity: скорость жидкости в НКТ (м/с)
+            length: длина участка (глубина спуска насоса), м
+            gravity: ускорение свободного падения, м/с²
+        Returns:
+            Потери напора на трение (м)
+        """
+        d_inner = self._get_nkt_inner_diameter()
+
+        # h = λ * (L/d) * (v²/2g)
+        friction_loss = lambda_coef * (length / d_inner) * (velocity ** 2 / (2 * gravity))
+
+        return friction_loss
+
+    def _get_buffer_head_from_pressure(self, target_flow, intake_pressure):
+        """
+        Перевод буферного давления из МПа в метры столба жидкости.
+        Формула: H_буф = P_буф / (ρ * g)
+        где P_буф переводится из МПа в Па (1 МПа = 10⁶ Па)
+        Args:
+            target_flow: целевой дебит, м³/сут
+            intake_pressure: давление на приеме, МПа
+        Returns:
+            float: буферный напор, м
+        """
+        props = self.get_fluid_properties_at_intake(target_flow, intake_pressure)
+        density = props['density']
+
+        # H = P / (ρ * g) # noqa
+        buffer_head = (self.buffer_pressure * MPA_TO_PA) / (density * GRAVITY)  # noqa
+
+        return buffer_head
+
+    def _calculate_gas_lift_effect(self, props):
+        """
+        Расчет газлифтного эффекта (дополнительного напора за счет газа)
+        """
+        if props['gas_fraction'] > 0 and self.bubble_point_pressure:
+            c_slip = 2e-4 if self.water_cut < 50 else 16e-4
+            annular_area = self._get_annular_area()
+            phi = props['gas_fraction'] / (1 + c_slip * props['flow_at_intake'] / annular_area)
+            p_gas = self.bubble_point_pressure * (1 / (1 - 0.4 * phi) - 1)  # noqa
+            h_gas = (p_gas * 1e6) / (props['density'] * GRAVITY)
+        else:
+            h_gas = 0
+
+        return h_gas
+
+    def get_dynamic_level(self):
+        """Публичный метод для получения динамического уровня"""
+        return self._get_dynamic_level()
 
     def get_mixture_density(self, water_cut=None):
         """
-        Плотность смеси без учета газа, кг/м³
+        Плотность смеси без учета газа, кг/м2
         Если water_cut не указан, используется значение из модели
         """
-        wcut = water_cut if water_cut is not None else self.water_cut
-        oil_fraction = 1 - wcut / 100
-        water_fraction = wcut / 100
-        return self.oil_density * oil_fraction + self.water_density * water_fraction
+        w_cut = water_cut if water_cut is not None else self.water_cut
+        oil_fraction = 1 - w_cut / 100
+        water_fraction = w_cut / 100
+        return self.oil_density * oil_fraction + self.water_density * water_fraction  # noqa
 
     def get_max_possible_flow(self):
-        """
-        Максимально возможный дебит по коэффициенту продуктивности, м³/сут
-        """
+        """Максимально возможный дебит по коэффициенту продуктивности, м3/сут"""
         if self.productivity_index and self.reservoir_pressure:
-            P_zab_min = 5.0  # минимальное забойное давление, МПа
-            return self.productivity_index * (self.reservoir_pressure - P_zab_min)
+            p_zab_min = MIN_BOTTOM_HOLE_PRESSURE  # минимальное забойное давление
+            return self.productivity_index * (self.reservoir_pressure - p_zab_min)  # noqa
         return None
 
     def get_recommended_flow(self):
         """
-        Рекомендуемый дебит (не больше formation_debit если он задан)
+        Рекомендуемый дебит (приоритет у formation_debit если он задан)
         """
-        max_flow = self.get_max_possible_flow()
-
-        if max_flow:
-            recommended = max_flow * 0.8
-        else:
-            recommended = 100
-
-        # Если задан formation_debit, не превышаем его
+        # Если явно задан плановый дебит - используем его
         if self.formation_debit:
-            return min(recommended, self.formation_debit)
+            return self.formation_debit
 
-        return recommended
+        # Иначе рассчитываем на основе продуктивности
+        max_flow = self.get_max_possible_flow()
+        if max_flow:
+            return max_flow * 0.8
+
+        # Если ничего нет - значение по умолчанию
+        return DEFAULT_FLOW
 
     def get_min_intake_pressure(self):
-        """
-        Минимальное давление на приеме насоса, МПа
-        """
+        """Минимальное давление на приеме насоса, МПа"""
         if self.bubble_point_pressure:
-            return 0.75 * self.bubble_point_pressure  # 25% свободного газа
-        return 3.0  # значение по умолчанию
+            return 0.75 * self.bubble_point_pressure  # noqa
+        return MIN_INTAKE_PRESSURE
 
-    def get_fluid_properties_at_intake(self, flow_rate, intake_pressure):
+    @with_defaults
+    def get_fluid_properties_at_intake(self, target_flow, intake_pressure, **kwargs):
         """
         Расчет свойств жидкости на приеме насоса
-
         Args:
-            flow_rate: Дебит жидкости, м³/сут
-            intake_pressure: Давление на приеме насоса, МПа
-
+            target_flow: дебит жидкости, м3/сут
+            intake_pressure: давление на приеме насоса, МПа
         Returns:
-            dict: Свойства жидкости на приеме
+            dict: свойства жидкости на приеме
         """
         # Объемный коэффициент при текущем давлении
         if self.bubble_point_pressure and intake_pressure >= self.bubble_point_pressure:
-            B = self.oil_volume_factor
+            b = self.oil_volume_factor  # noqa
             gas_fraction = 0
         elif self.bubble_point_pressure:
             # Формула 8.7 из стандарта
-            B = self.water_cut/100 + (1 - self.water_cut/100) * (
-                1 + (self.oil_volume_factor - 1) * (intake_pressure / self.bubble_point_pressure)**0.5
+            b = self.water_cut / 100 + (1 - self.water_cut / 100) * (  # noqa
+                    1 + (self.oil_volume_factor - 1) * (intake_pressure / self.bubble_point_pressure) ** 0.5  # noqa
             )
-
             # Объемное газосодержание (формула 8.10)
             gas_fraction = 1 / (
-                (1 + intake_pressure) * B + 1 / (
-                    self.gas_factor * (1 - intake_pressure / self.bubble_point_pressure)
+                    (1 + intake_pressure) * b + 1 / (
+                    self.gas_factor * (1 - intake_pressure / self.bubble_point_pressure)  # noqa
                 )
             )
         else:
-            B = 1.0
+            b = 1.0
             gas_fraction = 0
 
         # Расход на приеме, м³/с
-        flow_at_intake = flow_rate * B / 86400
+        flow_at_intake = target_flow * b / SECONDS_IN_DAY
 
         # Плотность смеси на приеме
         if gas_fraction > 0:
@@ -252,10 +416,11 @@ class Well(models.Model):
             'flow_at_intake': flow_at_intake,
             'gas_fraction': gas_fraction,
             'density': rho_mix,
-            'volume_factor': B
+            'volume_factor': b
         }
 
-    def get_pump_depth(self, target_flow=None, intake_pressure=None):
+    @with_defaults
+    def get_pump_depth(self, target_flow=None, intake_pressure=None, **kwargs):
         """
         Возвращает глубину спуска насоса.
         Если пользователь указал - возвращает её.
@@ -265,100 +430,431 @@ class Well(models.Model):
         if self.pump_depth is not None:
             return self.pump_depth
 
-        # Иначе рассчитываем автоматически
-        g = 9.81
-
-        if target_flow is None:
-            target_flow = self.get_recommended_flow()
-
-        # Забойное давление при заданном дебите
-        if self.productivity_index and self.reservoir_pressure:
-            P_zab = self.reservoir_pressure - target_flow / self.productivity_index
-        else:
-            P_zab = self.reservoir_pressure * 0.7 if self.reservoir_pressure else 10.0
+        # Свойства жидкости на приеме
+        props = self.get_fluid_properties_at_intake(target_flow, intake_pressure)
+        print('props', props)
 
         # Динамический уровень
-        rho = self.get_mixture_density()
-        H_din = self.depth - (P_zab * 1e6) / (rho * g)
-
-        # Давление на приеме
-        if intake_pressure is None:
-            P_intake = self.get_min_intake_pressure()
-        else:
-            P_intake = intake_pressure
+        h_din = self._get_dynamic_level(target_flow, intake_pressure)  # noqa
 
         # Глубина спуска насоса
-        calculated_depth = H_din + (P_intake * 1e6) / (rho * g)
+        calculated_depth = h_din + (intake_pressure * MPA_TO_PA) / (props['density'] * GRAVITY)
 
-        return round(calculated_depth, 1)
+        return calculated_depth
 
-    def calculate_required_head(self, flow_rate, intake_pressure=None):
+    @with_defaults
+    def calculate_required_head(self, target_flow, intake_pressure=None, **kwargs):
         """
         Расчет потребного напора насоса для заданного дебита
-
         Args:
-            flow_rate: Планируемый дебит, м³/сут
-            intake_pressure: Давление на приеме (если None - рассчитывается)
-
+            target_flow: Планируемый дебит, м³/сут
+            intake_pressure: Давление на приеме
         Returns:
             float: Потребный напор насоса, м
         """
-        g = 9.81
-
-        # Забойное давление при заданном дебите
-        if self.productivity_index and self.reservoir_pressure:
-            P_zab = self.reservoir_pressure - flow_rate / self.productivity_index
-        else:
-            P_zab = self.reservoir_pressure * 0.7 if self.reservoir_pressure else 10.0
-
-        # Давление на приеме насоса
-        if intake_pressure is None:
-            P_intake = self.get_min_intake_pressure()
-        else:
-            P_intake = intake_pressure
-
         # Свойства жидкости на приеме
-        props = self.get_fluid_properties_at_intake(flow_rate, P_intake)
-
-        # Динамический уровень
-        H_din = self.depth - (P_zab * 1e6) / (props['density'] * g)
+        props = self.get_fluid_properties_at_intake(target_flow, intake_pressure)
 
         # Глубина спуска насоса
-        L_pump = H_din + (P_intake * 1e6) / (props['density'] * g)
+        l_pump = self.get_pump_depth(target_flow, intake_pressure)
 
         # Скорость жидкости в НКТ
-        d_inner = self._get_nkt_inner_diameter()
-        nkt_area = math.pi * d_inner**2 / 4
-        velocity = flow_rate / (86400 * nkt_area)
+        velocity = self._get_fluid_velocity_in_nkt(target_flow)
 
-        # Потери на трение
-        Re = velocity * d_inner / 1e-6  # число Рейнольдса
-        if Re < 2300:
-            lambda_coef = 64 / Re
-        else:
-            lambda_coef = 0.3164 / Re**0.25
+        # Число Рейнольдса
+        re = self._get_reynolds_number(target_flow)
 
-        h_tr = lambda_coef * (L_pump / d_inner) * (velocity**2 / (2*g))
+        # Определяем коэффициент гидравлического трения (λ) в зависимости от режима течения
+        lambda_coef = self._calculate_friction_factor(re)
+
+        # Рассчитываем потери напора на трение в НКТ по формуле Дарси-Вейсбаха
+        h_tr = self._calculate_friction_loss(
+            lambda_coef=lambda_coef,
+            velocity=velocity,
+            length=l_pump
+        )
 
         # Буферное давление в метрах
-        h_buf = (self.buffer_pressure * 1e6) / (props['density'] * g)
+        h_buf = self._get_buffer_head_from_pressure(target_flow, intake_pressure)
 
         # Газлифтный эффект
-        if props['gas_fraction'] > 0 and self.bubble_point_pressure:
-            C_slip = 2e-4 if self.water_cut < 50 else 16e-4
-            phi = props['gas_fraction'] / (1 + C_slip * props['flow_at_intake'] / self._get_annular_area())
-            P_gas = self.bubble_point_pressure * (1 / (1 - 0.4*phi) - 1)
-            h_gas = (P_gas * 1e6) / (props['density'] * g)
-        else:
-            h_gas = 0
+        h_gas = self._calculate_gas_lift_effect(props)
 
         # ИТОГО: потребный напор
-        required_head = L_pump + h_buf + h_tr - h_gas
+        required_head = l_pump + h_buf + h_tr - h_gas
 
-        print(f"DEBUG: L_pump={L_pump:.0f} м, h_buf={h_buf:.0f} м, h_tr={h_tr:.0f} м, h_gas={h_gas:.0f} м")
-        print(f"DEBUG: required_head={required_head:.0f} м")
+        return required_head
 
-        return round(required_head, 1)
+    def get_static_level(self):
+        """
+        Расчет статического уровня жидкости в скважине
+        """
+        # Пластовое давление в Паскалях
+        p_res_pa = self.reservoir_pressure * 1e6
+
+        # Буферное давление в Паскалях
+        p_buf_pa = self.buffer_pressure * 1e6
+
+        # Плотность смеси
+        density = self.get_mixture_density()
+
+        g = 9.81
+
+        # Высота столба жидкости от забоя до уровня
+        liquid_column = (p_res_pa - p_buf_pa) / (density * g)
+
+        # Статический уровень = глубина скважины - высота столба
+        static_level = self.depth - liquid_column
+
+        return static_level
+
+    def get_dynamic_level_from_telemetry(self, intake_pressure_mpa=None):
+        """
+        Расчет динамического уровня по давлению на приеме из телеметрии
+
+        Args:
+            intake_pressure_mpa: давление на приеме, МПа (если None - берет из последней телеметрии)
+        """
+        # Если давление не передано, берем из последней телеметрии
+        if intake_pressure_mpa is None:
+            last_telemetry = self.telemetry.order_by('-timestamp').first()
+            if last_telemetry and last_telemetry.intake_pressure:
+                intake_pressure_mpa = last_telemetry.intake_pressure / 9.87  # атм → МПа
+                print('Давление на приеме из телеметрии', intake_pressure_mpa)
+            else:
+                return None
+
+        # Глубина спуска насоса
+        pump_depth = self.get_pump_depth()
+
+        # Плотность жидкости на приеме (с учетом газа)
+        props = self.get_fluid_properties_at_intake()
+        density = props['density']  # кг/м³
+
+        # Перевод давления из МПа в Па
+        pressure_pa = intake_pressure_mpa * 1e6
+
+        # Высота столба жидкости над насосом
+        liquid_column = pressure_pa / (density * 9.81)
+        print('Плотность жидкости на приеме (с учетом газа)', density)
+        print('Высота столба жидкости над насосом', liquid_column)
+        print('Глубина спуска насоса', pump_depth)
+        # Динамический уровень
+        dynamic_level = pump_depth - liquid_column
+
+        return dynamic_level
+
+    @with_defaults
+    def get_full_engineering_report(self, target_flow=None, intake_pressure=None, **kwargs):
+        """
+        Полный инженерный отчет по скважине
+
+        Args:
+            target_flow: Целевой дебит (если None - берется рекомендованный)
+            intake_pressure: Давление на приеме (если None - берется минимальное)
+
+        Returns:
+            dict: Все расчетные параметры для отображения инженеру
+        """
+        # Получаем свойства на приеме
+        props = self.get_fluid_properties_at_intake(target_flow, intake_pressure)
+
+        # Собираем полный отчет
+        report = {
+            'input_data': self._get_input_parameters(),                                     # 📋 Исходные данные
+            'reservoir': self._get_reservoir_parameters(target_flow, intake_pressure),      # ⛽ Параметры пласта
+            'fluid': self._get_fluid_properties(),                                          # 💧 Свойства жидкости
+            'intake': self._get_intake_parameters(props, intake_pressure),
+            'hydraulics': self._get_hydraulics_parameters(target_flow, props),
+            'head_components': self._get_head_components(target_flow, intake_pressure, props),
+            'recommendations': self._get_recommendations(props),
+            'metadata': {
+                'report_generated': datetime.now().isoformat(),
+                'target_flow_used': target_flow,
+                'intake_pressure_used': intake_pressure,
+                'calculation_method': 'СТО ТН 229-2017 / ТУ 3631-015-87867182-2009'
+            }
+        }
+
+        return report
+
+    def _get_input_parameters(self):
+        """
+        Исходные данные скважины (что хранится в БД)
+        """
+        return {
+            # Основная информация
+            'name': self.name,
+            'external_id': self.external_id,
+            'is_active': self.is_active,
+
+            # Геология
+            'depth': self.depth,
+            'reservoir_pressure': self.reservoir_pressure,
+            'productivity_index': self.productivity_index,
+            'casing_diameter': self.casing_inner_diameter,
+
+            # Свойства жидкости
+            'oil_density': self.oil_density,
+            'water_density': self.water_density,
+            'gas_factor': self.gas_factor,
+            'water_cut': self.water_cut,
+            'bubble_point_pressure': self.bubble_point_pressure,
+            'oil_volume_factor': self.oil_volume_factor,
+
+            # Конструкция
+            'nkt_diameter': self.nkt_diameter,
+            'nkt_wall_thickness': self.nkt_wall_thickness,
+            'buffer_pressure': self.buffer_pressure,
+
+            # Эксплуатация
+            'formation_debit': self.formation_debit,
+            'pump_depth_input': self.pump_depth,
+
+            # Системные
+            'created_at': self.created_at.isoformat() if self.created_at else None,  # noqa
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,  # noqa
+        }
+
+    def _get_reservoir_parameters(self, target_flow, intake_pressure):
+        """
+        Расчет параметров пласта при заданном дебите
+        с учетом свойств жидкости на приеме
+        Args:
+            target_flow: Целевой дебит (м³/сут)
+            props: Словарь со свойствами на приеме (из get_fluid_properties_at_intake)
+        """
+        # Забойное давление по формуле притока
+        p_zab = self._get_p_zab(target_flow)
+        depression = self.reservoir_pressure - p_zab if self.reservoir_pressure else 0  # noqa
+
+        # Динамический уровень
+        h_din = self._get_dynamic_level(target_flow, intake_pressure)
+
+        # Максимальный дебит
+        max_flow = self.get_max_possible_flow()
+
+        return {
+            'reservoir_pressure': round(self.reservoir_pressure, 2) if self.reservoir_pressure else None,  # noqa
+            'productivity_index': round(self.productivity_index, 2) if self.productivity_index else None,  # noqa
+            'target_flow': round(target_flow, 1),
+            'bottom_hole_pressure': round(p_zab, 2),
+            'depression': round(depression, 2),
+            'dynamic_level': round(h_din, 1),
+            'max_possible_flow': round(max_flow, 1) if max_flow else None,
+            'flow_percent_of_max': round((target_flow / max_flow * 100), 1) if max_flow else None,
+        }
+
+    def _get_fluid_properties(self):
+        """
+        Базовые свойства пластовой жидкости (без учета давления)
+        """
+        # Плотность смеси без газа
+        rho_mix_no_gas = self.get_mixture_density()
+
+        return {
+            'oil_density': round(self.oil_density, 1),  # noqa
+            'water_density': round(self.water_density, 1),  # noqa
+            'gas_factor': round(self.gas_factor, 1),  # noqa
+            'water_cut': round(self.water_cut, 1),  # noqa
+            'bubble_point_pressure': round(self.bubble_point_pressure, 2) if self.bubble_point_pressure else None,  # noqa
+            'oil_volume_factor': round(self.oil_volume_factor, 3),  # noqa
+            'mixture_density_no_gas': round(rho_mix_no_gas, 1),
+            'is_gas_present': self.bubble_point_pressure is not None,
+        }
+
+    def _get_intake_parameters(self, props, intake_pressure):
+        """
+        Параметры на приеме насоса (с учетом газа)
+        """
+        print(f"🔥 _get_intake_parameters: intake_pressure={intake_pressure}")
+        print(f"🔥 props keys: {props.keys() if props else None}")
+        # Минимально допустимое давление
+        min_pressure = self.get_min_intake_pressure()
+
+        # ЗАЩИТА ОТ None
+        if intake_pressure is None or min_pressure is None:
+            pressure_margin = None
+        else:
+            pressure_margin = intake_pressure - min_pressure
+
+        # Проверка необходимости газосепаратора
+        need_separator = props['gas_fraction'] > 0.25 if props['gas_fraction'] is not None else False
+        gas_status = "⚠️ Требуется газосепаратор!" if need_separator else "✓ Норма"
+        gas_color = "danger" if need_separator else "success"
+
+        return {
+            'intake_pressure': round(intake_pressure, 2) if intake_pressure is not None else None,
+            'min_intake_pressure': round(min_pressure, 2) if min_pressure is not None else None,
+            'pressure_margin': round(pressure_margin, 2) if pressure_margin is not None else None,
+            'pressure_status': "выше мин." if pressure_margin and pressure_margin > 0 else "НИЖЕ МИН.!",
+            'pressure_color': "success" if pressure_margin and pressure_margin > 1 else
+            "warning" if pressure_margin and pressure_margin > 0 else "danger",
+
+            'gas_fraction': round(props['gas_fraction'] * 100, 1) if props['gas_fraction'] is not None else None,
+            'gas_fraction_limit': 25.0,
+            'gas_status': gas_status,
+            'gas_color': gas_color,
+            'need_separator': need_separator,
+
+            'density': round(props['density'], 1) if props['density'] is not None else None,
+            'density_no_gas': round(self.get_mixture_density(), 1),
+            'density_diff': round(props['density'] - self.get_mixture_density(), 1)
+            if props['density'] is not None else None,
+
+            'volume_factor': round(props['volume_factor'], 3) if props['volume_factor'] is not None else None,
+            'flow_at_intake_m3s': round(props['flow_at_intake'], 6) if props['flow_at_intake'] is not None else None,
+            'flow_at_intake_m3day': round(props['flow_at_intake'] * 86400, 1) if props[
+                                                                                     'flow_at_intake'] is not None else None,
+        }
+
+    def _get_hydraulics_parameters(self, target_flow, props):
+        """
+        Гидравлические параметры потока в НКТ
+        """
+
+        # Геометрия
+        nkt_area = math.pi * self._get_nkt_inner_diameter() ** 2 / 4  # площадь в м²
+
+        # СКОРОСТЬ: target_flow в м³/сут, переводим в м³/с
+        velocity = self._get_fluid_velocity_in_nkt(target_flow)  # м/с
+
+        # Число Рейнольдса (ν = 1e-6 м²/с для воды)
+        re = self._get_reynolds_number(target_flow)
+
+        # Режим течения и коэффициент трения
+        if re < 2300:
+            lambda_coef = self._calculate_friction_factor(re)
+            flow_regime = "ламинарный"
+        else:
+            lambda_coef = self._calculate_friction_factor(re)
+            flow_regime = "турбулентный"
+
+        # Потери на трение на 1000 м (удельные)
+        h_tr_per_1000 = lambda_coef * (1000 / self._get_nkt_inner_diameter()) * (velocity ** 2 / (2 * GRAVITY))
+
+        return {
+            'nkt_inner_diameter_mm': round(self._get_nkt_inner_diameter() * 1000, 1),
+            'nkt_area_cm2': round(nkt_area * 10000, 2),
+            'velocity': velocity,
+            'reynolds': round(re, 0),
+            'flow_regime': flow_regime,
+            'lambda_coef': lambda_coef,
+            'friction_loss_per_1000m': round(h_tr_per_1000, 2),
+            'friction_formula': "Блазиуса" if re >= 2300 else "Стокса",
+        }
+
+    def _get_head_components(self, target_flow, intake_pressure, props):
+        """
+        Все составляющие потребного напора насоса
+        """
+
+        # Забойное давление
+        p_zab = self._get_p_zab(target_flow)
+
+        # Давление на приеме (минимальное)
+        p_intake = self.get_min_intake_pressure()
+
+        # Динамический уровень
+        h_din = self._get_dynamic_level(target_flow, intake_pressure)
+
+        # Глубина спуска насоса
+        l_pump = h_din + (p_intake * 1e6) / (props['density'] * GRAVITY)
+
+        # Потери на трение
+        velocity = self._get_fluid_velocity_in_nkt(target_flow)
+        re = self._get_reynolds_number(target_flow)
+
+        lambda_coef = self._calculate_friction_factor(re)
+
+        h_tr = self._calculate_friction_loss(
+            lambda_coef=lambda_coef,
+            velocity=velocity,
+            length=l_pump
+        )
+
+        # Буферное давление в метрах
+        h_buf = self._get_buffer_head_from_pressure(target_flow, intake_pressure)
+
+        # Газлифтный эффект
+        h_gas = self._calculate_gas_lift_effect(props)
+
+        # Итоговый напор
+        total_head = self.calculate_required_head(target_flow, intake_pressure)
+
+        return {
+            'components': {
+                'pump_depth': {
+                    'value': round(l_pump, 1),
+                    'description': 'Глубина спуска насоса',
+                    'formula': 'H_дин + P_пр/ρg'
+                },
+                'buffer_head': {
+                    'value': round(h_buf, 1),
+                    'description': 'Буферное давление',
+                    'formula': 'P_буф/ρg'
+                },
+                'friction_head': {
+                    'value': round(h_tr, 1),
+                    'description': 'Потери на трение',
+                    'formula': 'λ·L/d·v²/2g'
+                },
+                'gas_lift_head': {
+                    'value': round(h_gas, 1),
+                    'description': 'Газлифтный эффект (вычитается)',
+                    'formula': 'P_газ/ρg'
+                }
+            },
+            'total_head': total_head,
+            'total_head_formula': 'L + h_буф + h_тр - h_газ',
+            'dynamic_level': round(h_din, 1),
+            'intake_pressure_used': round(p_intake, 2),
+        }
+
+    def _get_recommendations(self, props):
+        """
+        Рекомендации по эксплуатации на основе расчетов
+        """
+        recommendations = []
+
+        # 1. Проверка газосодержания
+        if props['gas_fraction'] > 0.25:
+            recommendations.append({
+                'type': 'warning',
+                'parameter': 'Газ',
+                'message': f'Газосодержание {props["gas_fraction"] * 100:.1f}% превышает допустимые 25%',
+                'action': 'Рекомендуется установка газосепаратора',
+                'icon': 'gas-pump'
+            })
+        elif props['gas_fraction'] > 0.15:
+            recommendations.append({
+                'type': 'info',
+                'parameter': 'Газ',
+                'message': f'Газосодержание {props["gas_fraction"] * 100:.1f}% (в пределах нормы)',
+                'action': 'Газосепаратор не требуется, но рекомендуется контроль',
+                'icon': 'chart-line'
+            })
+        else:
+            recommendations.append({
+                'type': 'success',
+                'parameter': 'Газ',
+                'message': f'Газосодержание {props["gas_fraction"] * 100:.1f}% (в пределах нормы)',
+                'action': 'Газосепаратор не требуется',
+                'icon': 'check-circle'
+            })
+
+        # 2. Рекомендации по НКТ (скорость потока)
+        nkt_area = math.pi * self._get_nkt_inner_diameter() ** 2 / 4
+        # Для скорости используем target_flow, но у нас его нет в этом методе
+        # Добавим заглушку, в финальной версии нужно передавать target_flow
+
+        # 3. Рекомендации по динамическому уровню
+        # Будет добавлено позже с полными данными
+
+        # 4. Рекомендации по типоразмеру насоса
+        # Будет добавлено после подбора
+
+        return recommendations
 
 
 class PumpCharacteristic(models.Model):
@@ -546,35 +1042,35 @@ class PumpCharacteristic(models.Model):
             # if max_kpd > 0:
             #     threshold_kpd = max_kpd * 0.75
 
-                # Находим диапазон где КПД ≥ 75% от максимального
-                # start_idx = None
-                # end_idx = None
+            # Находим диапазон где КПД ≥ 75% от максимального
+            # start_idx = None
+            # end_idx = None
 
-                # # Ищем левую границу (идем от максимума влево)
-                # for i in range(max_idx, -1, -1):
-                #     if self.kpd_values[i] >= threshold_kpd:
-                #         start_idx = i
-                #     else:
-                #         break  # КПД упал ниже порога
-                #
-                # # Ищем правую границу (идем от максимума вправо)
-                # for i in range(max_idx, len(self.kpd_values)):
-                #     if self.kpd_values[i] >= threshold_kpd:
-                #         end_idx = i
-                #     else:
-                #         break  # КПД упал ниже порога
+            # # Ищем левую границу (идем от максимума влево)
+            # for i in range(max_idx, -1, -1):
+            #     if self.kpd_values[i] >= threshold_kpd:
+            #         start_idx = i
+            #     else:
+            #         break  # КПД упал ниже порога
+            #
+            # # Ищем правую границу (идем от максимума вправо)
+            # for i in range(max_idx, len(self.kpd_values)):
+            #     if self.kpd_values[i] >= threshold_kpd:
+            #         end_idx = i
+            #     else:
+            #         break  # КПД упал ниже порога
 
-                # if start_idx is not None and end_idx is not None:
-                #     self.optimal_flow_range = [
-                #         self.q_values[start_idx],
-                #         self.q_values[end_idx]
-                #     ]
-                # else:
-                #     # Если не нашли диапазон, используем рабочий
-                #     self.optimal_flow_range = [
-                #         self.left_range,
-                #         self.right_range
-                #     ]
+            # if start_idx is not None and end_idx is not None:
+            #     self.optimal_flow_range = [
+            #         self.q_values[start_idx],
+            #         self.q_values[end_idx]
+            #     ]
+            # else:
+            #     # Если не нашли диапазон, используем рабочий
+            #     self.optimal_flow_range = [
+            #         self.left_range,
+            #         self.right_range
+            #     ]
             # else:
             #     # Если нет КПД, используем рабочий диапазон
             #     self.optimal_flow_range = [
@@ -611,30 +1107,47 @@ class PumpCharacteristic(models.Model):
 
         super().save(*args, **kwargs)
 
-    def calculate_at_point(self, q):
+    def calculate_at_point(self, q_value):
         """
-        Расчет параметров в заданной точке подачи.
-
-        Args:
-            q_value: Подача, м³/сут
-
-        Returns:
-            dict: Параметры насоса
+        Calculate pump parameters at given flow rate.
         """
-        h = self._interpolate(self.q_values, self.h_values, q)
-        n = self._interpolate(self.q_values, self.n_values, q)
-        kpd = self._interpolate(self.q_values, self.kpd_values, q)
+        # Добавьте проверки перед интерполяцией
+        if not self.q_values or not self.h_values:
+            return {
+                'q': q_value,
+                'h': 0,
+                'n': 0,
+                'kpd': 0,
+                'is_in_working_range': False,
+                'is_optimal': False
+            }
+
+        # Проверка, что q_value в пределах массива
+        if q_value <= self.q_values[0]:
+            h = self.h_values[0]
+            n = self.n_values[0] if self.n_values else 0
+            kpd = self.kpd_values[0] if self.kpd_values else 0
+        elif q_value >= self.q_values[-1]:
+            h = self.h_values[-1]
+            n = self.n_values[-1] if self.n_values else 0
+            kpd = self.kpd_values[-1] if self.kpd_values else 0
+        else:
+            # Интерполяция
+            h = self._interpolate(self.q_values, self.h_values, q_value)
+            n = self._interpolate(self.q_values, self.n_values, q_value) if self.n_values else 0
+            kpd = self._interpolate(self.q_values, self.kpd_values, q_value) if self.kpd_values else 0
+
+        is_optimal = False
+        if self.optimal_flow_range and len(self.optimal_flow_range) == 2:
+            is_optimal = self.optimal_flow_range[0] <= q_value <= self.optimal_flow_range[1]
 
         return {
-            'q': q,
+            'q': q_value,
             'h': h,
             'n': n,
             'kpd': kpd,
-            'is_in_working_range': self.left_range <= q <= self.right_range,
-            'is_optimal': (
-                    self.optimal_flow_range and
-                    self.optimal_flow_range[0] <= q <= self.optimal_flow_range[1]
-            ),
+            'is_in_working_range': self.left_range <= q_value <= self.right_range,
+            'is_optimal': is_optimal,
             'head_at_nominal': self.nominal_head,
             'stages_count': self.stages_count
         }
@@ -848,7 +1361,7 @@ class ElectricMotor(models.Model):
         help_text='U_InsulWinding',
         default=0.0
     )
-    interturn_test_voltage  = models.FloatField(
+    interturn_test_voltage = models.FloatField(
         verbose_name='Испытание межвитковой изоляции на электрическую прочность, В',
         help_text='U_MinInsulWinding',
         default=0.0
@@ -1210,6 +1723,7 @@ class TelemetryData(models.Model):
         indexes = [
             models.Index(fields=['well', '-timestamp']),
             models.Index(fields=['external_id']),
+            models.Index(fields=['-timestamp']),
         ]
         unique_together = ['well', 'external_id', 'timestamp']
 

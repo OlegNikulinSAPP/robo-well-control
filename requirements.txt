@@ -1,5 +1,12 @@
-pandas==2.3.3
+pandas~=3.0.0
 openpyxl==3.1.5
 djangorestframework==3.16.1
 django-filter==25.2
 plotly==6.5.2
+
+Django~=6.0.1
+requests~=2.32.5
+celery~=5.6.2
+APScheduler~=3.10.4
+openai~=2.21.0
+urllib3~=2.6.3

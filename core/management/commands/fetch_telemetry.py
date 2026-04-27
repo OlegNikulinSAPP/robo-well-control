@@ -1,36 +1,59 @@
 from django.core.management.base import BaseCommand
 from core.services.telemetry_api import TelemetryAPIClient
-from core.models import Well
+import logging
+# from core.models import Well
+
+logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = 'Получение телеметрии скважин из внешнего API'
+    help = 'Параллельный сбор телеметрии со всех скважин'
 
     def add_arguments(self, parser):
         parser.add_argument(
+            '--workers',
+            type=int,
+            default=5,
+            help='Количество параллельных потоков (по умолчанию 5)'
+        )
+        parser.add_argument(
             '--well-id',
             type=int,
-            help='ID скважины в нашей БД'
+            help='ID конкретной скважины для опроса (если не указан - опрашиваются все)'
         )
 
     def handle(self, *args, **options):
-        client = TelemetryAPIClient()
+        workers = options.get('workers', 5)
+        well_id = options.get('well_id')
 
-        if options['well_id']:
-            well_id = options['well_id']
+        self.stdout.write(f"🚀 Запуск сбора телеметрии (воркеров: {workers})")
+
+        client = TelemetryAPIClient(max_workers=workers)
+
+        # Если запрошена конкретная скважина
+        if well_id:
+            from core.models import Well
             try:
                 well = Well.objects.get(id=well_id)
-                self.stdout.write(f"Получение данных для скважины {well.name} (ID: {well_id})...")
-                result = client.fetch_well_telemetry(well_id)  # Передаем well_id, не external_id
-                if result:
-                    self.stdout.write(self.style.SUCCESS("Данные получены и сохранены"))
-                else:
-                    self.stdout.write(self.style.ERROR("Не удалось получить данные"))
             except Well.DoesNotExist:
-                self.stdout.write(self.style.ERROR(f"Скважина {well_id} не найдена"))
-        else:
-            self.stdout.write("Получение данных для всех скважин...")
-            results = client.fetch_all_wells()
+                self.stdout.write(self.style.ERROR(f"❌ Скважина с ID {well_id} не найдена"))
+                return
+
+            self.stdout.write(f"📡 Опрос скважины {well.name} (ID: {well.id})...")
+            result = client._fetch_single_well(well)
+
+            if result:
+                self.stdout.write(self.style.SUCCESS(f"✅ Данные для скважины {well.name} получены и сохранены"))
+            else:
+                self.stdout.write(self.style.ERROR(f"❌ Не удалось получить данные для скважины {well.name}"))
+            return
+
+        # Если опрашиваем все скважины
+        try:
+            results = client.fetch_all_wells_parallel()
             self.stdout.write(self.style.SUCCESS(
-                f"Успешно: {len(results['success'])}, Ошибок: {len(results['failed'])}"
+                f"\n✅ Готово! Успешно: {len(results['success'])}, Ошибок: {len(results['failed'])}"
             ))
+        except Exception as e:
+            self.stdout.write(self.style.ERROR(f"❌ Критическая ошибка: {e}"))
+            logger.error(f"Ошибка в команде fetch_telemetry: {e}", exc_info=True)

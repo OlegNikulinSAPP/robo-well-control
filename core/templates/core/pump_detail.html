@@ -106,39 +106,62 @@
         </div>
     </div>
 
+    <!-- КНОПКА И РЕЗУЛЬТАТЫ -->
     <div class="col-md-6">
-        <div class="card mb-4">
-            <div class="card-header bg-warning">
-                <h5 class="mb-0">Рекомендуемый двигатель</h5>
-            </div>
-            <div class="card-body">
-                {% if pump.recommended_motor %}
-                    <table class="table">
-                        <tr>
-                            <th>Модель:</th>
-                            <td>{{ pump.recommended_motor.model }}</td>
-                        </tr>
-                        <tr>
-                            <th>Мощность:</th>
-                            <td>{{ pump.recommended_motor.nominal_power }} кВт</td>
-                        </tr>
-                        <tr>
-                            <th>Напряжение:</th>
-                            <td>{{ pump.recommended_motor.nominal_voltage }} В</td>
-                        </tr>
-                        <tr>
-                            <th>КПД:</th>
-                            <td>{{ pump.recommended_motor.efficiency }}%</td>
-                        </tr>
-                    </table>
-                {% else %}
-                    <p>Рекомендация не задана</p>
-                    <a href="#" class="btn btn-sm btn-primary">Подобрать двигатель</a>
-                {% endif %}
-            </div>
+      <div class="card mb-4">
+        <div class="card-header bg-warning">
+          <h5 class="mb-0">Рекомендуемый двигатель</h5>
         </div>
+        <div class="card-body">
+          {% if pump.recommended_motor %}
+          <table class="table">
+            <tr>
+              <th>Модель:</th>
+              <td>{{ pump.recommended_motor.model }}</td>
+            </tr>
+            <tr>
+              <th>Мощность:</th>
+              <td>{{ pump.recommended_motor.nominal_power }} кВт</td>
+            </tr>
+            <tr>
+              <th>Напряжение:</th>
+              <td>{{ pump.recommended_motor.nominal_voltage }} В</td>
+            </tr>
+            <tr>
+              <th>КПД:</th>
+              <td>{{ pump.recommended_motor.efficiency }}%</td>
+            </tr>
+          </table>
+          {% else %}
+          <p>Рекомендация не задана</p>
+          <button class="btn btn-sm btn-primary" id="find-motor-btn" data-pump-id="{{ pump.id }}">
+            Подобрать двигатель
+          </button>
+
+          <!-- Контейнер для результатов -->
+          <div id="motor-results" class="mt-3" style="display: none;">
+            <h6>Подходящие двигатели:</h6>
+            <div class="table-responsive">
+              <table class="table table-sm table-hover">
+                <thead>
+                  <tr>
+                    <th>Модель</th>
+                    <th>Мощность (кВт)</th>
+                    <th>Напряжение (В)</th>
+                    <th>КПД (%)</th>
+                    <th>Запас</th>
+                  </tr>
+                </thead>
+                <tbody id="motors-tbody">
+                  <tr><td colspan="5" class="text-center">Загрузка...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
     </div>
-</div>
 
 <div class="row">
     <div class="col-12">
@@ -177,15 +200,73 @@ N: {{ pump.n_values|slice:":10" }}...
 </div>
 
 {% block extra_js %}
-<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-3.0.0.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener("DOMContentLoaded", function () {
+    // График насоса
     fetch('{% url "pump_chart_data" pump.id %}')
-        .then(response => response.json())
-        .then(data => {
-            Plotly.newPlot('pump-chart', JSON.parse(data.graph));
-        });
+      .then(response => response.json())
+      .then(data => {
+        Plotly.newPlot("pump-chart", JSON.parse(data.graph));
+      });
+
+    // НОВЫЙ КОД: обработчик кнопки подбора двигателя
+    const findMotorBtn = document.getElementById('find-motor-btn');
+    if (findMotorBtn) {
+      findMotorBtn.addEventListener('click', function() {
+    const pumpId = this.dataset.pumpId;
+    const resultsDiv = document.getElementById('motor-results');
+    const tbody = document.getElementById('motors-tbody');
+    const nominalFlow = {{ pump.nominal_range|default:0 }};
+
+    resultsDiv.style.display = 'block';
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center">Расчет мощности насоса...</td></tr>';
+
+    // 1. Сначала получаем мощность насоса в рабочей точке
+    fetch(`/api/pumps/${pumpId}/calculate_point/?flow=${nominalFlow}`)
+      .then(response => response.json())
+      .then(pointData => {
+        const pumpPower = pointData.characteristics.n || 0;
+        console.log("Мощность насоса в рабочей точке:", pumpPower);
+
+        if (pumpPower <= 0) {
+          throw new Error("Не удалось рассчитать мощность насоса");
+        }
+
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center">Поиск двигателей...</td></tr>';
+
+        // 2. Ищем двигатели по рассчитанной мощности
+        return fetch(`/api/motors/find_for_pump/?pump_power=${pumpPower}`);
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log("Ответ от API:", data);
+
+        if (data.motors && data.motors.length > 0) {
+          let html = '';
+          data.motors.forEach(motor => {
+            html += `
+              <tr>
+                <td>${motor.model || '—'}</td>
+                <td>${motor.nominal_power || '—'}</td>
+                <td>${motor.nominal_voltage || '—'}</td>
+                <td>${motor.efficiency || '—'}</td>
+                <td>${motor.power_match_percentage ? motor.power_match_percentage.toFixed(1) + '%' : '—'}</td>
+              </tr>
+            `;
+          });
+          tbody.innerHTML = html;
+        } else {
+          tbody.innerHTML = '<tr><td colspan="5" class="text-center">Нет подходящих двигателей</td></tr>';
+        }
+      })
+      .catch(error => {
+        console.error("Ошибка:", error);
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center">Ошибка: ${error.message}</td></tr>`;
+      });
 });
+    }
+  });
 </script>
 {% endblock %}
 {% endblock %}

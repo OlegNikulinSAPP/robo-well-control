@@ -17,107 +17,343 @@
     {% block extra_css %}
     <style>
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            font-weight: 400;
-            background: linear-gradient(135deg, #a8c0ff 0%, #8ec5fc 100%);
+            background: linear-gradient(rgba(255,255,255,0.5), rgba(255,255,255,0.5)),
+            url('/static/images/background.png') center/cover fixed;
+            display: flex;
+            flex-direction: column;
             min-height: 100vh;
         }
+
+        .container-fluid {
+            flex: 1;
+        }
+
         h1, h2, h3, h4, h5, h6, .navbar-brand, .nav-link {
             font-weight: 500;
         }
+
         .navbar-nav .nav-link {
             transition: all 0.3s ease;
             border-radius: 20px;
             margin: 0 2px;
             padding: 0.5rem 1rem;
         }
+
         .navbar-nav .nav-link:hover {
             background-color: rgba(255,255,255,0.1);
             transform: translateY(-1px);
         }
+
         .card, .btn, .alert, .dropdown-menu {
             border-radius: 15px !important;
         }
+
         .navbar {
             border-radius: 0 0 15px 15px !important;
+        }
+
+        .text-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        /* ========== УНИВЕРСАЛЬНЫЙ СТИЛЬ ДЛЯ ТЕМНЫХ КАРТОЧЕК ========== */
+        .card-dark {
+            background: rgba(0, 0, 0, 0.65) !important;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .card-dark .card-header {
+            background: rgba(0, 0, 0, 0.4) !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .card-dark .card-header h5 {
+            color: #ffd966 !important;
+        }
+
+        .card-dark .card-body {
+            color: #f0f0f0;
+        }
+
+        .card-dark,
+        .card-dark * {
+            color: #fff !important;
+        }
+
+        /* Стили для полей ввода в темных карточках */
+        .card-dark .form-control {
+            background: rgba(0, 0, 0, 0.6) !important;
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+            color: #fff !important;
+        }
+
+        .card-dark .form-control::placeholder {
+            color: rgba(255, 255, 255, 0.6) !important;
+        }
+
+        .card-dark .form-control:focus {
+            background: rgba(0, 0, 0, 0.8) !important;
+            border-color: #ffd966 !important;
+            box-shadow: none !important;
+        }
+
+        /* Стили для кнопок в темных карточках */
+        .card-dark .btn-primary {
+            background: rgba(255, 255, 255, 0.2) !important;
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+            color: #fff !important;
+        }
+
+        .card-dark .btn-primary:hover {
+            background: rgba(255, 255, 255, 0.3) !important;
+        }
+
+        .card-dark .btn-secondary {
+            background: rgba(100, 100, 100, 0.5) !important;
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+            color: #fff !important;
+        }
+
+        .card-dark .btn-secondary:hover {
+            background: rgba(100, 100, 100, 0.7) !important;
+        }
+
+        .card-dark .btn-outline-primary {
+            border-color: rgba(255, 255, 255, 0.5) !important;
+            color: #fff !important;
+        }
+
+        .card-dark .btn-outline-primary:hover {
+            background: rgba(255, 255, 255, 0.2) !important;
+        }
+
+        /* ========== УНИВЕРСАЛЬНЫЕ СТИЛИ ДЛЯ ТАБЛИЦ В ТЕМНЫХ КАРТОЧКАХ ========== */
+        .card-dark .table {
+            color: #fff !important;
+            margin-bottom: 0;
+        }
+
+        .card-dark .table thead th {
+            color: #ffd966 !important;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+            font-weight: 600;
+        }
+
+        .card-dark .table td,
+        .card-dark .table th {
+            border-bottom-color: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            padding: 12px 8px;
+            vertical-align: middle;
+        }
+
+        .card-dark .table td {
+            color: #f0f0f0;
+        }
+
+        .card-dark .table-hover tbody tr:hover {
+            background: rgba(255, 255, 255, 0.1) !important;
+            transition: all 0.2s ease;
+        }
+
+        .card-dark .table-striped > tbody > tr:nth-of-type(odd) {
+            background: rgba(255, 255, 255, 0.05) !important;
+        }
+
+        .card-dark .table-bordered {
+            border-color: rgba(255, 255, 255, 0.2) !important;
+        }
+
+        .card-dark .table-bordered td,
+        .card-dark .table-bordered th {
+            border-color: rgba(255, 255, 255, 0.2) !important;
+        }
+
+        .card-dark .table-sm td,
+        .card-dark .table-sm th {
+            padding: 6px 8px;
+        }
+
+        .card-dark .table a {
+            color: #ffd966 !important;
+            text-decoration: none;
+        }
+
+        .card-dark .table a:hover {
+            color: #ffed4e !important;
+            text-decoration: underline;
+        }
+
+        .card-dark .table .badge {
+            font-size: 0.85em;
+            padding: 5px 10px;
+            border-radius: 20px;
+        }
+
+        .card-dark .table .badge.bg-success {
+            background: rgba(40, 167, 69, 0.8) !important;
+        }
+
+        .card-dark .table .badge.bg-danger {
+            background: rgba(220, 53, 69, 0.8) !important;
+        }
+
+        .card-dark .table .badge.bg-warning {
+            background: rgba(255, 193, 7, 0.8) !important;
+            color: #000 !important;
+        }
+
+        .card-dark .table .badge.bg-info {
+            background: rgba(23, 162, 184, 0.8) !important;
+        }
+
+        .card-dark .table .badge.bg-secondary {
+            background: rgba(108, 117, 125, 0.8) !important;
+        }
+
+        .card-dark .table-responsive {
+            border-radius: 15px;
+            overflow-x: auto;
+        }
+
+        /* Адаптивность таблицы */
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Кнопки в таблице */
+        .card-dark .table .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            min-width: fit-content;
+        }
+
+        .card-dark .table .btn {
+            white-space: nowrap;
+            flex: 0 0 auto;
+        }
+
+        /* Для маленьких экранов */
+        @media (max-width: 768px) {
+            .card-dark .table {
+                min-width: 600px; /* Минимальная ширина таблицы */
+            }
+
+            .card-dark .table .btn {
+                padding: 4px 8px;
+                font-size: 0.75rem;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .card-dark .table {
+                min-width: 500px;
+            }
+
+            .card-dark .table .btn {
+                padding: 3px 6px;
+                font-size: 0.7rem;
+            }
+
+            /* Скрываем текст, оставляем иконки */
+            .card-dark .table .btn span {
+                display: none;
+            }
+        }
+
+        /* Подъем карточек */
+        .transition-card {
+            transition: all 0.3s ease-in-out;
+        }
+
+        .transition-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 30px rgba(0,0,0,0.3);
         }
     </style>
     {% endblock %}
 </head>
 <body>
-    <!-- Навигация -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="{% url 'dashboard' %}">RoboWell Control</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link
+<!-- Навигация -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow sticky-top">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="{% url 'dashboard' %}"><i class="bi bi-robot me-2"></i>RoboWell Control</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link
                         {% if request.resolver_match.url_name == 'well_list' %}
                         active
                         {% endif %}"
-                           href="{% url 'well_list' %}"><i class="bi bi-droplet me-1"></i>Скважины</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link
+                       href="{% url 'well_list' %}"><i class="bi bi-droplet me-1"></i>Скважины</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link
                         {% if request.resolver_match.url_name == 'pump_list' %}
                         active
                         {% endif %}"
-                           href="{% url 'pump_list' %}"><i class="bi bi-gear-fill me-1"></i>Насосы</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link
+                       href="{% url 'pump_list' %}"><i class="bi bi-gear-fill me-1"></i>Насосы</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link
                         {% if request.resolver_match.url_name == 'motor_list' %}
                         active
                         {% endif %}"
-                           href="{% url 'motor_list' %}"><i class="bi bi-lightning-charge-fill me-1"></i>Электродвигатели</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link
+                       href="{% url 'motor_list' %}"><i class="bi bi-lightning-charge-fill me-1"></i>Электродвигатели</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link
                         {% if request.resolver_match.url_name == 'command_logs' %}
                         active
                         {% endif %}"
-                           href="{% url 'command_logs' %}"><i class="bi bi-clock-history me-1"></i>История команд</a>
-                    </li>
-                </ul>
+                       href="{% url 'command_logs' %}"><i class="bi bi-clock-history me-1"></i>История команд</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- Основной контент -->
+<main class="container-fluid px-4">
+    {% block content %}{% endblock %}
+</main>
+
+<!-- Подвал -->
+<footer class="bg-dark text-light text-center text-lg-start mt-5 opacity-75">
+    <div class="container p-4">
+        <div class="row">
+            <div class="col-lg-6 col-md-12 mb-4 mb-md-0">
+                <h5 class="text-uppercase">RoboWell</h5>
+                <p>
+                    Система RoboWell для мониторинга и контроля нефтяных скважин
+                </p>
+            </div>
+            <div class="col-lg-6 col-md-12 mb-4 mb-md-0">
+                <h5 class="text-uppercase">Контакты</h5>
+                <p>
+                    Email: nikulinov@sistemaservis.ru
+                    Тел.: +7 917 255 12 34
+                </p>
             </div>
         </div>
-    </nav>
+    </div>
+    <div class="text-center p-3 bg-dark text-white-50">
+        RockWell. Все права защищены.
+    </div>
+</footer>
 
-    <!-- Основной контент -->
-    <main class="container-fluid py-4 px-4">
-        {% block content %}{% endblock %}
-    </main>
-
-    <!-- Подвал -->
-    <footer class="bg-dark text-light text-center text-lg-start mt-5 opacity-75">
-        <div class="container p-4">
-            <div class="row">
-                <div class="col-lg-6 col-md-12 mb-4 mb-md-0">
-                    <h5 class="text-uppercase">RoboWell</h5>
-                    <p>
-                        Система RoboWell для мониторинга и контроля нефтяных скважин
-                    </p>
-                </div>
-                <div class="col-lg-6 col-md-12 mb-4 mb-md-0">
-                    <h5 class="text-uppercase">Контакты</h5>
-                    <p>
-                        Email: nikulinov@sistemaservis.ru
-                        Тел.: +7 917 255 12 34
-                    </p>
-                </div>
-            </div>
-        </div>
-        <div class="text-center p-3 bg-dark text-white-50">
-            RockWell. Все права защищены.
-        </div>
-    </footer>
-
-    <!-- Уведомления -->
-    <div class="position-fixed top-0 end-0 p-3" style="z-index: 1050">
+<!-- Уведомления -->
+<div class="position-fixed top-0 end-0 p-3" style="z-index: 1050">
     <div id="alert-container"></div>
 </div>
 
@@ -163,9 +399,9 @@
     setInterval(checkAlerts, 30000);
 </script>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 
-    {% block extra_js %}{% endblock %}
+{% block extra_js %}{% endblock %}
 </body>
 </html>

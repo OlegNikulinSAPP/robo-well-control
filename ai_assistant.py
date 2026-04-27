@@ -28,11 +28,13 @@ API_BASE_URL = "http://127.0.0.1:8000/api"
 # Глобальный таймаут для всех запросов
 DEFAULT_TIMEOUT = 10  # секунд
 
+
 # Настраиваем сессию с таймаутами
 class TimeoutAdapter(requests.adapters.HTTPAdapter):
     def send(self, request, **kwargs):
         kwargs['timeout'] = DEFAULT_TIMEOUT
         return super().send(request, **kwargs)
+
 
 # Создаем сессию с таймаутами
 session = requests.Session()
@@ -538,10 +540,9 @@ class RoboWellAssistant:
         print(f"\n🔍 Подбор оборудования для скважины с именем: {well_name}")
 
         try:
-            # Сначала ищем скважину по имени
+            # Получаем все скважины
             url = f"{API_BASE_URL}/wells/"
-            params = {"search": well_name}
-            response = session.get(url, params=params, timeout=DEFAULT_TIMEOUT)
+            response = session.get(url, timeout=DEFAULT_TIMEOUT)
 
             if response.status_code != 200:
                 return f"❌ Ошибка при поиске скважины: {response.status_code}"
@@ -556,22 +557,50 @@ class RoboWellAssistant:
             else:
                 wells = []
 
-            # Ищем точное совпадение по имени
+            if not wells:
+                return f"❌ В базе данных нет скважин."
+
+            # Показываем все доступные скважины для отладки
+            print("📋 Доступные скважины в БД:")
+            for w in wells:
+                print(f"   - '{w.get('name')}' (ID: {w.get('id')})")
+
+            # Ищем скважину
             target_well = None
+
+            # Очищаем поисковый запрос от лишних символов
+            search_term = well_name.strip()
+
             for well in wells:
-                if well.get('name') == well_name:
+                db_name = well.get('name', '')
+
+                # Проверяем различные варианты совпадения
+                if (db_name == search_term or  # точное совпадение
+                        search_term in db_name or  # поиск в имени БД
+                        db_name in search_term or  # имя БД в поиске
+                        # Поиск по номеру скважины (цифры)
+                        any(num in db_name for num in re.findall(r'\d+', search_term))):
                     target_well = well
+                    print(f"   ✅ Найдено совпадение: '{db_name}'")
                     break
 
             if not target_well:
-                return f"❌ Скважина с именем '{well_name}' не найдена."
+                # Если не нашли, показываем все скважины пользователю
+                well_list = "\n".join([f"   • {w.get('name')}" for w in wells])
+                return f"""❌ Скважина "{well_name}" не найдена.
 
-            # Получаем ID скважины
+    📋 Доступные скважины в системе:
+    {well_list}
+
+    💡 Подсказка: Используйте точное название скважины из списка выше, например:
+       "Подбери оборудование для Куст №10, скважина №265 Коттынское месторождение"
+    """
+
             well_id = target_well.get('id')
             if not well_id:
                 return f"❌ Не удалось определить ID скважины"
 
-            # Вызываем существующий метод с ID
+            # Вызываем подбор оборудования
             return self.find_equipment_for_well(well_id)
 
         except Exception as e:
@@ -1041,121 +1070,139 @@ class RoboWellAssistant:
         except Exception as e:
             return f"❌ Ошибка: {str(e)}"
 
+        def select_equipment_via_api(self, well_id: int) -> str:
+            """НОВЫЙ МЕТОД: подбор оборудования через прямой вызов API"""
+            import requests
+
+            print(f"\n🚀 НОВЫЙ МЕТОД: select_equipment_via_api для скважины {well_id}")
+
+            try:
+                url = f"{API_BASE_URL}/pumps/select_for_well/"
+                response = requests.get(url, params={"well_id": well_id, "service_factor": 1.15}, timeout=10)
+
+                print(f"   Статус: {response.status_code}")
+
+                if response.status_code != 200:
+                    return f"❌ Ошибка API: {response.status_code}"
+
+                data = response.json()
+                found = data.get('found_count', 0)
+                recs = data.get('recommendations', [])
+
+                if found == 0:
+                    return "❌ Подходящие насосы не найдены"
+
+                result = f"✅ НАЙДЕНО {found} ВАРИАНТОВ ПОДБОРА:\n\n"
+
+                for i, rec in enumerate(recs[:5], 1):
+                    pump = rec.get('pump', {})
+                    motor = rec.get('motor', {})
+                    point = rec.get('pump_at_point', {})
+
+                    result += f"{i}. 🌀 {pump.get('name', '?')}\n"
+                    result += f"   • Подача: {point.get('flow', 0):.0f} м³/сут\n"
+                    result += f"   • Напор: {point.get('head', 0):.0f} м\n"
+                    result += f"   • КПД насоса: {point.get('efficiency', 0):.1f}%\n"
+                    result += f"   • Двигатель: {motor.get('model', '?')}\n"
+                    result += f"   • Мощность двигателя: {motor.get('power', 0)} кВт\n"
+                    result += f"   • КПД двигателя: {motor.get('efficiency', 0):.1f}%\n\n"
+
+                return result
+
+            except Exception as e:
+                return f"❌ Ошибка: {str(e)}"
+
     # ==================== КОМБИНИРОВАННЫЕ МЕТОДЫ ====================
 
     def find_equipment_for_well(self, well_id: int) -> str:
-        """Подобрать насос и двигатель для скважины"""
+        """Подобрать насос и двигатель для скважины (используя API)"""
         print(f"\n🔧 Подбор оборудования для скважины ID={well_id}...")
+
         try:
-            # Сначала получаем данные скважины
-            well_url = f"{API_BASE_URL}/wells/{well_id}/"
-            well_response = session.get(well_url, timeout=DEFAULT_TIMEOUT)
+            # Используем API эндпоинт, который уже работает
+            url = f"{API_BASE_URL}/pumps/select_for_well/"
+            params = {
+                "well_id": well_id,
+                "service_factor": 1.15
+            }
 
-            if well_response.status_code != 200:
-                return f"❌ Скважина с ID {well_id} не найдена"
+            print(f"   Запрос: {url} с params={params}")
+            response = session.get(url, params=params, timeout=DEFAULT_TIMEOUT)
+            print(f"   Статус ответа: {response.status_code}")
 
-            well = well_response.json()
+            if response.status_code != 200:
+                return f"❌ Ошибка при подборе оборудования: {response.status_code}"
 
-            # Функция для извлечения числа из строки
-            def extract_number(value):
-                if value is None:
-                    return 0.0
+            data = response.json()
 
-                # Если это уже число
-                if isinstance(value, (int, float)):
-                    return float(value)
+            well_info = data.get('well', {})
+            params_info = data.get('selection_parameters', {})
+            recommendations = data.get('recommendations', [])
+            found_count = data.get('found_count', 0)
 
-                value_str = str(value).strip()
-                print(f"   Raw value: '{value_str}'")
-
-                # Берем часть до первого пробела (если есть)
-                if ' ' in value_str:
-                    value_str = value_str.split()[0]
-                    print(f"   After split: '{value_str}'")
-
-                # Заменяем запятую на точку
-                value_str = value_str.replace(',', '.')
-
-                try:
-                    result = float(value_str)
-                    print(f"   Parsed: {result}")
-                    return result
-                except ValueError:
-                    print(f"   Failed to parse")
-                    return 0.0
-
-            # Извлекаем параметры
-            depth = extract_number(well.get('depth', '0'))
-            debit = extract_number(well.get('formation_debit', '0'))
-
-            print(f"   Параметры: глубина={depth}м, дебит={debit}м³/сут")
-
-            # Расчет требуемого напора (упрощенно)
-            required_head = depth * 0.8  # 80% от глубины
-
+            # Формируем ответ
             result = f"""
-    🔍 ПОДБОР ОБОРУДОВАНИЯ ДЛЯ СКВАЖИНЫ {well.get('name')} (ID={well_id}):
-       Параметры скважины:
-       • Глубина: {depth:.0f} м
-       • Дебит: {debit:.1f} м³/сут
-       • Расчетный напор: {required_head:.0f} м
+    🔍 ПОДБОР ОБОРУДОВАНИЯ ДЛЯ СКВАЖИНЫ {well_info.get('name')} (ID={well_id}):
+
+    📊 ПАРАМЕТРЫ СКВАЖИНЫ:
+       • Глубина: {well_info.get('depth', '?')} м
+       • Пластовое давление: {well_info.get('reservoir_pressure', '?')} МПа
+       • Коэффициент продуктивности: {well_info.get('productivity_index', '?')} м³/сут·МПа
+       • Обводненность: {well_info.get('water_cut', '?')}%
+
+    📐 РАСЧЕТНЫЕ ПАРАМЕТРЫ:
+       • Целевой дебит: {params_info.get('target_flow', '?'):.1f} м³/сут
+       • Потребный напор: {params_info.get('required_head', '?'):.0f} м
+       • Газосодержание на приеме: {params_info.get('gas_fraction', '?'):.1f}%
+       • Глубина спуска насоса: {well_info.get('pump_depth', '?'):.0f} м
 
     """
-            # Ищем насосы
-            pumps_url = f"{API_BASE_URL}/pumps/find_suitable/"
-            pumps_params = {
-                "required_flow": debit,
-                "required_head": required_head,
-                "min_efficiency": 60
-            }
-            print(f"   Поиск насосов: Q={debit}, H={required_head}")
-            pumps_response = session.get(pumps_url, params=pumps_params, timeout=DEFAULT_TIMEOUT)
 
-            if pumps_response.status_code == 200:
-                pumps_data = pumps_response.json()
-                pumps = pumps_data.get('pumps', [])
+            if found_count == 0:
+                result += """
+    ❌ ПОДХОДЯЩИЕ НАСОСЫ НЕ НАЙДЕНЫ
 
-                if pumps:
-                    best_pump = pumps[0]
-                    result += f"✅ Рекомендуемый насос: **{best_pump.get('harka_stupen')}**\n"
-                    result += f"   • Qном: {best_pump.get('nominal_range')} м³/сут\n"
-                    result += f"   • H: {best_pump.get('nominal_head_display')}\n"
-                    result += f"   • КПД в точке: {best_pump.get('calculated_efficiency', 0):.1f}%\n"
-
-                    # Получаем мощность насоса
-                    pump_power = best_pump.get('calculated_power', 0)
-                    if pump_power:
-                        result += f"   • Мощность насоса: {pump_power:.1f} кВт\n"
-
-                        # Ищем двигатель под мощность насоса
-                        motors_url = f"{API_BASE_URL}/motors/find_for_pump/"
-                        motors_params = {
-                            "pump_power": pump_power,
-                            "min_efficiency": 85
-                        }
-                        print(f"   Поиск двигателей для мощности {pump_power} кВт")
-                        motors_response = session.get(motors_url, params=motors_params, timeout=DEFAULT_TIMEOUT)
-
-                        if motors_response.status_code == 200:
-                            motors_data = motors_response.json()
-                            motors = motors_data.get('motors', [])
-
-                            if motors:
-                                best_motor = motors[0]
-                                result += f"\n✅ Рекомендуемый двигатель: **{best_motor.get('model')}**\n"
-                                result += f"   • Мощность: {best_motor.get('nominal_power')} кВт\n"
-                                result += f"   • Напряжение: {best_motor.get('nominal_voltage')} В\n"
-                                result += f"   • КПД: {best_motor.get('efficiency')}%\n"
-                            else:
-                                result += "\n❌ Подходящих двигателей не найдено\n"
-                        else:
-                            result += f"\n❌ Ошибка при поиске двигателей: {motors_response.status_code}\n"
-                    else:
-                        result += "\n❌ Не удалось определить мощность насоса\n"
-                else:
-                    result += "❌ Подходящих насосов не найдено\n"
+    Рекомендации:
+       • Увеличьте целевой дебит
+       • Рассмотрите возможность использования насоса с большим количеством ступеней
+    """
             else:
-                result += f"❌ Ошибка при поиске насосов: {pumps_response.status_code}\n"
+                result += f"✅ НАЙДЕНО {found_count} ВАРИАНТОВ (показаны первые 5):\n\n"
+
+                for i, rec in enumerate(recommendations[:5], 1):
+                    pump = rec.get('pump', {})
+                    motor = rec.get('motor', {})
+                    pump_point = rec.get('pump_at_point', {})
+
+                    pump_eff = pump_point.get('efficiency', 0)
+                    motor_eff = motor.get('efficiency', 0)
+                    overall = rec.get('overall_efficiency', 0)
+
+                    # Оценка эффективности
+                    if pump_eff >= 50:
+                        eff_rating = "🟢 Хорошо"
+                    elif pump_eff >= 35:
+                        eff_rating = "🟡 Удовлетворительно"
+                    else:
+                        eff_rating = "🔴 Низкая эффективность"
+
+                    result += f"{i}. **Насос: {pump.get('name', '?')}**\n"
+                    result += f"   • Рабочий диапазон: {pump.get('working_range', ['?', '?'])[0]} - {pump.get('working_range', ['?', '?'])[1]} м³/сут\n"
+                    result += f"   • В рабочей точке: Q={pump_point.get('flow', '?'):.0f} м³/сут, H={pump_point.get('head', '?'):.0f} м\n"
+                    result += f"   • КПД насоса: {pump_eff:.1f}% ({eff_rating})\n"
+                    result += f"   • Мощность на валу: {pump_point.get('power', '?'):.1f} кВт\n"
+                    result += f"   • Двигатель: {motor.get('model', '?')} ({motor.get('power', '?')} кВт)\n"
+                    if motor_eff > 0:
+                        result += f"   • КПД двигателя: {motor_eff:.1f}%\n"
+                    result += f"   • Общий КПД системы: {overall:.1f}%\n\n"
+
+                # Добавляем рекомендации по улучшению
+                result += """
+    💡 РЕКОМЕНДАЦИИ:
+       • Для улучшения КПД рассмотрите насос с номинальной подачей ближе к 80 м³/сут
+       • Текущий КПД низкий из-за работы насоса на левой границе диапазона
+       • Рекомендуется увеличить дебит скважины до 150-200 м³/сут для оптимальной работы
+    """
 
             return result
 
@@ -1163,7 +1210,51 @@ class RoboWellAssistant:
             print(f"   Ошибка: {str(e)}")
             import traceback
             traceback.print_exc()
+            return f"❌ Ошибка при подборе оборудования: {str(e)}"
+
+    def select_equipment_via_api(self, well_id: int) -> str:
+        """НОВЫЙ МЕТОД: подбор оборудования через прямой вызов API"""
+        import requests
+
+        print(f"\n🚀 НОВЫЙ МЕТОД: select_equipment_via_api для скважины {well_id}")
+
+        try:
+            url = f"{API_BASE_URL}/pumps/select_for_well/"
+            response = requests.get(url, params={"well_id": well_id, "service_factor": 1.15}, timeout=10)
+
+            print(f"   Статус: {response.status_code}")
+
+            if response.status_code != 200:
+                return f"❌ Ошибка API: {response.status_code}"
+
+            data = response.json()
+            found = data.get('found_count', 0)
+            recs = data.get('recommendations', [])
+
+            if found == 0:
+                return "❌ Подходящие насосы не найдены"
+
+            result = f"✅ НАЙДЕНО {found} ВАРИАНТОВ ПОДБОРА:\n\n"
+
+            for i, rec in enumerate(recs[:5], 1):
+                pump = rec.get('pump', {})
+                motor = rec.get('motor', {})
+                point = rec.get('pump_at_point', {})
+
+                result += f"{i}. 🌀 {pump.get('name', '?')}\n"
+                result += f"   • Подача: {point.get('flow', 0):.0f} м³/сут\n"
+                result += f"   • Напор: {point.get('head', 0):.0f} м\n"
+                result += f"   • КПД насоса: {point.get('efficiency', 0):.1f}%\n"
+                result += f"   • Двигатель: {motor.get('model', '?')}\n"
+                result += f"   • Мощность двигателя: {motor.get('power', 0)} кВт\n"
+                result += f"   • КПД двигателя: {motor.get('efficiency', 0):.1f}%\n\n"
+
+            return result
+
+        except Exception as e:
             return f"❌ Ошибка: {str(e)}"
+
+
 
     # ==================== ОСНОВНОЙ МЕТОД ====================
 
@@ -1171,6 +1262,34 @@ class RoboWellAssistant:
         """
         Задать вопрос ассистенту. AI сам решает, какие функции вызывать.
         """
+        # ОТЛАДКА
+        print("\n" + "=" * 60)
+        print(f"📝 ask() получил вопрос: {user_question}")
+        print("=" * 60)
+
+        # ПРЯМАЯ ОБРАБОТКА ПОДБОРА ОБОРУДОВАНИЯ
+        if "подбер" in user_question.lower() and "оборудован" in user_question.lower():
+            print("🔧 ВОШЛИ В ПРЯМУЮ ОБРАБОТКУ ПОДБОРА")
+
+            import re
+            # Ищем ID скважины
+            match = re.search(r'скважин[ыe]\s*(\d+)', user_question.lower())
+            if not match:
+                match = re.search(r'ID\s*(\d+)', user_question.lower())
+
+            if match:
+                well_id = int(match.group(1))
+                print(f"🎯 Найден ID скважины: {well_id}")
+                # result = self.find_equipment_for_well(well_id)
+                result = self.select_equipment_via_api(well_id)
+                self.messages.append({"role": "assistant", "content": result})
+                return result
+            else:
+                print("⚠️ ID скважины не найден, показываем список")
+                result = self.get_wells()
+                self.messages.append({"role": "assistant", "content": result})
+                return result
+
         # Если вопрос не про двигатели, сбрасываем last_motor_id
         if "двигател" not in user_question.lower() and "мотор" not in user_question.lower():
             if self.last_motor_id:
@@ -1215,41 +1334,21 @@ class RoboWellAssistant:
 
             # ===== ПРИНУДИТЕЛЬНАЯ ПРОВЕРКА ДЛЯ ПОДБОРА ОБОРУДОВАНИЯ =====
             # Проверяем, не пытается ли AI просто описать действия вместо вызова функции
-            if "подбер" in user_question.lower() and (
-                    "насос" in user_question.lower() or "двигател" in user_question.lower()):
-                print("   🔧 Обнаружен запрос на подбор оборудования")
+            # ===== ПРЯМОЙ ВЫЗОВ НОВОГО МЕТОДА =====
+            if "подбер" in user_question.lower() and "скважин" in user_question.lower():
+                print("   🚀 ПРЯМОЙ ВЫЗОВ НОВОГО МЕТОДА")
 
-                # Получаем данные скважин
-                wells_data = self.get_wells_data()
-                if wells_data:
-                    # Находим самую глубокую скважину
-                    deepest_well = None
-                    max_depth = 0
-
-                    for well in wells_data:
-                        depth_str = str(well.get('depth', '0'))
-                        # Извлекаем число из строки (убираем " м")
-                        depth = float(''.join(c for c in depth_str if c.isdigit() or c == '.'))
-                        if depth > max_depth:
-                            max_depth = depth
-                            deepest_well = well
-
-                    if deepest_well:
-                        well_id = deepest_well.get('id')
-                        well_name = deepest_well.get('name')
-                        print(f"   🎯 Найдена самая глубокая скважина: {well_name} (ID={well_id})")
-
-                        # ПРИНУДИТЕЛЬНО вызываем подбор оборудования, ИГНОРИРУЯ ответ AI
-                        print(f"   🔨 Принудительно вызываю find_equipment_for_well для ID={well_id}")
-                        result = self.find_equipment_for_well(well_id)
-
-                        # Добавляем в историю
-                        self.messages.append({"role": "assistant", "content": result})
-                        return result
-                    else:
-                        return "❌ Не удалось найти самую глубокую скважину"
+                import re
+                match = re.search(r'(\d+)', user_question)
+                if match:
+                    well_id = int(match.group(1))
+                    print(f"   🎯 ID скважины: {well_id}")
+                    result = self.select_equipment_via_api(well_id)
+                    self.messages.append({"role": "assistant", "content": result})
+                    return result
                 else:
-                    return "❌ Не удалось получить данные скважин"
+                    # Если ID не найден, показываем список скважин
+                    return self.get_wells()
 
             # Проверяем, хочет ли AI вызвать функцию
             if message.tool_calls:

@@ -3,43 +3,53 @@
 {% block title %}Подбор оборудования - RoboWell{% endblock %}
 
 {% block content %}
-<div class="row mb-5">
+<div class="row mb-2">
     <div class="col-lg-8">
         <h1 class="display-4 fw-bold text-gradient mb-3">
             <i class="fas fa-search me-2"></i>Подбор оборудования
         </h1>
-        <p class="lead text-muted">Подбор насосов и двигателей для условий конкретной скважины</p>
+        <p class="lead text-muted">Интеллектуальный подбор насосов и двигателей</p>
     </div>
 </div>
 
 <!-- Хлебные крошки -->
 <nav aria-label="breadcrumb" class="mb-4">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Подбор оборудования</li>
+        <li class="breadcrumb-item">
+            <a href="{% url 'dashboard' %}">Главная страница</a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">
+            Подбор оборудования
+        </li>
     </ol>
 </nav>
 
 <!-- Карточка с формой поиска -->
 <div class="card shadow-sm mb-4">
+
+    <!-- Шапка карточки -->
     <div class="card-header bg-primary text-white">
         <h5 class="mb-0"><i class="fas fa-sliders-h me-2"></i>Параметры подбора</h5>
     </div>
+
+    <!-- Тело карточки -->
     <div class="card-body">
+
+        <!-- Форма  -->
         <form id="equipment-search-form" method="get" action="#" class="row g-3">
 
             <!-- Тип подбора -->
             <div class="col-md-12">
                 <label for="selection-type" class="form-label fw-bold">Тип подбора:</label>
                 <select id="selection-type" class="form-select" name="type">
-                    <option value="pump" selected>🔧 Подбор насоса по параметрам</option>
-                    <option value="motor">⚡ Подбор двигателя для насоса</option>
-                    <option value="well">🛢️ Полный подбор для скважины</option>
+                    <option value="well" selected>🛢️ Интеллектуальный подбор для скважины (рекомендуемый)</option>
+                    <option value="pump">🔧 Расширенный поиск насоса по параметрам</option>
+                    <option value="motor">⚡ Подбор двигателя</option>
                 </select>
             </div>
 
-            <!-- Поля для режима ПОДБОР НАСОСА -->
-            <div id="pump-fields" class="row g-3 mt-2">
+            <!-- Поля для режима РАСШИРЕННЫЙ ПОИСК НАСОСА -->
+            <div id="pump-fields" class="row g-3 mt-2" style="display: none;">
                 <div class="col-md-6">
                     <label for="pump-flow" class="form-label fw-bold">Требуемый расход (м³/сут):</label>
                     <input type="number" class="form-control" id="pump-flow" name="required_flow"
@@ -81,8 +91,9 @@
                 </div>
             </div>
 
-            <!-- Поля для режима ПОДБОР ДЛЯ СКВАЖИНЫ -->
-            <div id="well-fields" class="row g-3 mt-2" style="display: none;">
+            <!-- Поля для режима ИНТЕЛЛЕКТУАЛЬНЫЙ ПОДБОР -->
+            <div id="well-fields" class="row g-3 mt-2" style="display: flex;">
+                <!-- Селекты -->
                 <div class="col-md-6">
                     <label for="well-select" class="form-label fw-bold">Скважина:</label>
                     <select id="well-select" class="form-select" name="well_id" required>
@@ -94,6 +105,7 @@
                         {% endfor %}
                     </select>
                 </div>
+                <!-- Поля для дебита -->
                 <div class="col-md-6">
                     <label for="target-flow" class="form-label fw-bold">Целевой расход (м³/сут):</label>
                     <div class="input-group">
@@ -109,12 +121,18 @@
 
                 <!-- Блок расчетных параметров скважины -->
                 <div id="well-calculations" class="col-12 mt-3" style="display: none;">
+
+                    <!-- Карточка с расчетными параметрами -->
                     <div class="card border-info">
+
                         <div class="card-header bg-info text-white py-2">
                             <h6 class="mb-0"><i class="fas fa-calculator me-2"></i>Расчетные параметры скважины</h6>
                         </div>
+
                         <div class="card-body py-2">
+
                             <div class="row">
+
                                 <div class="col-md-3 col-6">
                                     <div class="text-center p-1">
                                         <small class="text-muted">Макс. дебит</small>
@@ -122,6 +140,7 @@
                                         <small>м³/сут</small>
                                     </div>
                                 </div>
+
                                 <div class="col-md-3 col-6">
                                     <div class="text-center p-1">
                                         <small class="text-muted">Реком. дебит</small>
@@ -129,6 +148,7 @@
                                         <small>м³/сут</small>
                                     </div>
                                 </div>
+
                                 <div class="col-md-3 col-6">
                                     <div class="text-center p-1">
                                         <small class="text-muted">Глубина насоса</small>
@@ -136,6 +156,7 @@
                                         <small>м</small>
                                     </div>
                                 </div>
+
                                 <div class="col-md-3 col-6">
                                     <div class="text-center p-1">
                                         <small class="text-muted">Треб. напор</small>
@@ -143,9 +164,13 @@
                                         <small>м</small>
                                     </div>
                                 </div>
+
                             </div>
+
                         </div>
+
                     </div>
+
                 </div>
 
                 <div class="col-md-4">
@@ -153,18 +178,28 @@
                     <input type="number" class="form-control" id="well-service-factor" name="service_factor"
                            value="1.15" min="1.0" max="2.0" step="0.05" required>
                 </div>
+
             </div>
 
-            <!-- Кнопка отправки -->
+            <!-- Кнопки действий -->
             <div class="row mt-4">
                 <div class="col-12 text-center">
-                    <button type="submit" class="btn btn-primary btn-lg px-5">
-                        <i class="fas fa-search me-2"></i>Найти оборудование
-                    </button>
+                    <div class="btn-group" role="group">
+                        <button type="submit" class="btn btn-primary btn-lg px-5 me-2">
+                            <i class="fas fa-search me-2"></i>Найти оборудование
+                        </button>
+                        <button type="button" id="show-full-report" class="btn btn-info btn-lg px-4"
+                                title="Полный инженерный отчет">
+                            <i class="fas fa-file-alt me-2"></i>Отчет
+                        </button>
+                    </div>
                 </div>
             </div>
+
         </form>
+
     </div>
+
 </div>
 
 <!-- Карточка результатов -->
@@ -180,6 +215,34 @@
         </div>
         <!-- Контейнер для таблицы результатов -->
         <div id="results-table-container"></div>
+    </div>
+</div>
+
+<!-- Модальное окно для отчета -->
+<div class="modal fade" id="reportModal" tabindex="-1" aria-labelledby="reportModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable" style="max-width: 80vw;">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="reportModalLabel">
+                    <i class="fas fa-file-alt me-2"></i>Инженерный отчет по скважине
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="report-content">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Загрузка...</span>
+                    </div>
+                    <p class="mt-2">Загрузка отчета...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                <button type="button" class="btn btn-info" onclick="window.print()">
+                    <i class="fas fa-print me-2"></i>Печать
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -205,6 +268,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const calcBlock = document.getElementById('well-calculations');
     const useRecommendedBtn = document.getElementById('use-recommended-flow');
 
+    // Кнопка отчета и модальное окно
+    const reportBtn = document.getElementById('show-full-report');
+    const reportModal = new bootstrap.Modal(document.getElementById('reportModal'));
+    const reportContent = document.getElementById('report-content');
+
     // ===== ФУНКЦИЯ ПЕРЕКЛЮЧЕНИЯ ПОЛЕЙ =====
     function toggleFields() {
         const selectedType = selectionType.value;
@@ -213,47 +281,58 @@ document.addEventListener('DOMContentLoaded', function() {
         motorFields.style.display = 'none';
         wellFields.style.display = 'none';
 
+        // скрываем результаты при смене типа
+        resultsCard.style.display = 'none';
+        resultsContainer.innerHTML = '';
+        resultsCount.textContent = '0';
+        loadingSpinner.style.display = 'none';
+
+        // Убираем required со всех полей скважины
+        wellSelect.required = false;
+
         if (selectedType === 'pump') {
             pumpFields.style.display = 'flex';
         } else if (selectedType === 'motor') {
             motorFields.style.display = 'flex';
         } else if (selectedType === 'well') {
             wellFields.style.display = 'flex';
-            if (wellSelect && wellSelect.value) {
+            wellSelect.required = true;  // включаем required только для режима скважины
+            // Загружаем расчеты, если скважина уже выбрана
+            if (wellSelect.value) {
                 loadWellCalculations(wellSelect.value);
             }
-        }
-
-        // Очищаем результаты при смене типа
-        if (resultsCard) {
-            resultsCard.style.display = 'none';
-            resultsContainer.innerHTML = '';
-            resultsCount.textContent = '0';
         }
     }
 
     // ===== ЗАГРУЗКА РАСЧЕТНЫХ ПАРАМЕТРОВ СКВАЖИНЫ =====
     function loadWellCalculations(wellId) {
-        if (!wellId || !calcBlock) {
+        if (!wellId) {
+            calcBlock.style.display = 'none';
             return;
         }
 
         calcBlock.style.display = 'block';
 
         // Показываем загрузку
-        document.getElementById('calc-max-flow').innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        document.getElementById('calc-max-flow').innerHTML = `<i class="fas fa-spinner fa-spin"></i>`;
         document.getElementById('calc-rec-flow').innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         document.getElementById('calc-pump-depth').innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         document.getElementById('calc-required-head').innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
         let url = `/api/wells/${wellId}/calculations/`;
-        if (targetFlow && targetFlow.value) {
+        if (targetFlow.value) {
             url += `?target_flow=${targetFlow.value}`;
         }
 
         fetch(url)
             .then(response => response.json())
             .then(data => {
+                /** @type {{
+                 *   calculated_max_flow: number,
+                 *   calculated_recommended_flow: number,
+                 *   calculated_pump_depth: number,
+                 *   calculated_required_head: number
+                 * }} data */
                 document.getElementById('calc-max-flow').innerHTML =
                     data.calculated_max_flow ? data.calculated_max_flow.toFixed(0) : '—';
                 document.getElementById('calc-rec-flow').innerHTML =
@@ -264,58 +343,318 @@ document.addEventListener('DOMContentLoaded', function() {
                     data.calculated_required_head ? data.calculated_required_head.toFixed(0) : '—';
 
                 // Обновляем placeholder для целевого расхода
-                if (targetFlow && data.calculated_recommended_flow) {
+                if (data.calculated_recommended_flow) {
                     targetFlow.placeholder = `Реком. ${data.calculated_recommended_flow} м³/сут`;
                 }
             })
             .catch(error => {
                 console.error('Ошибка загрузки расчетов:', error);
-                if (calcBlock) {
-                    calcBlock.style.display = 'none';
-                }
+                calcBlock.style.display = 'none';
             });
+    }
+
+    // ===== ЗАГРУЗКА ПОЛНОГО ОТЧЕТА =====
+    function loadFullReport(wellId) {
+        if (!wellId) {
+            alert('Сначала выберите скважину');
+            return;
+        }
+
+        // Показываем модальное окно с загрузкой
+        reportContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Загрузка...</span>
+                </div>
+                <p class="mt-2">Загрузка отчета...</p>
+            </div>
+        `;
+        reportModal.show();
+
+        let url = `/api/wells/${wellId}/full_report/`;
+        if (targetFlow.value) {
+            url += `?target_flow=${targetFlow.value}`;
+        }
+
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                renderFullReport(data);
+            })
+            .catch(error => {
+                console.error('Ошибка загрузки отчета:', error);
+                reportContent.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Ошибка при загрузке отчета: ${error.message}
+                    </div>
+                `;
+            });
+    }
+
+    // ===== ОТОБРАЖЕНИЕ ПОЛНОГО ОТЧЕТА =====
+    function renderFullReport(data) {
+        let html = '';
+
+        // 1. Исходные данные
+        html += '<div class="card mb-3">';
+        html += '<div class="card-header bg-secondary text-white"><h6 class="mb-0">📋 Исходные данные</h6></div>';
+        html += '<div class="card-body"><div class="row">';
+
+        if (data.input_data) {
+            html += `<div class="col-md-4"><strong>Скважина:</strong> ${data.input_data.name || '—'}</div>`;
+            html += `<div class="col-md-4"><strong>Глубина:</strong> ${data.input_data.depth || '—'} м</div>`;
+            html += `<div class="col-md-4"><strong>Пластовое давление:</strong> ${data.input_data.reservoir_pressure || '—'} МПа</div>`;
+            html += `<div class="col-md-4"><strong>Коэффициент продуктивности:</strong> ${data.input_data.productivity_index || '—'} м³/сут·МПа</div>`;
+            html += `<div class="col-md-4"><strong>Внутренний ⌀ эксплуатационной колонны:</strong> ${data.input_data.casing_diameter || '—'} мм</div>`;
+            html += `<div class="col-md-4"><strong>Плотность нефти:</strong> ${data.input_data.oil_density || '—'} кг/м³</div>`;
+            html += `<div class="col-md-4"><strong>Плотность воды:</strong> ${data.input_data.water_density || '—'} кг/м³</div>`;
+            html += `<div class="col-md-4"><strong>Обводненность:</strong> ${data.input_data.water_cut || '—'}%</div>`;
+            html += `<div class="col-md-4"><strong>Газовый фактор:</strong> ${data.input_data.gas_factor || '—'} м³/т</div>`;
+            html += `<div class="col-md-4"><strong>Давление насыщения:</strong> ${data.input_data.bubble_point_pressure || '—'}  МПа</div>`;
+            html += `<div class="col-md-4"><strong>Объемный коэффициент нефти:</strong> ${data.input_data.oil_volume_factor || '—'}</div>`;
+            html += `<div class="col-md-4"><strong>Наружный ⌀ НКТ:</strong> ${data.input_data.nkt_diameter || '—'}  мм</div>`;
+            html += `<div class="col-md-4"><strong>Толщина стенки НКТ:</strong> ${data.input_data.nkt_wall_thickness || '—'}  мм</div>`;
+            html += `<div class="col-md-4"><strong>Буферное давление:</strong> ${data.input_data.buffer_pressure || '—'}  МПа</div>`;
+            html += `<div class="col-md-4"><strong>Пластовый дебит:</strong> ${data.input_data.formation_debit || '—'}   м³/сут</div>`;
+            html += `<div class="col-md-4"><strong>Глубина спуска насоса:</strong> ${data.input_data.pump_depth_input || '—'}   м</div>`;
+        }
+        html += '</div></div></div>';
+
+        // 2. Параметры пласта
+        if (data.reservoir) {
+            html += '<div class="card mb-3">';
+            html += '<div class="card-header bg-primary text-white"><h6 class="mb-0">⛽ Параметры пласта</h6></div>';
+            html += '<div class="card-body"><div class="row">';
+            html += `<div class="col-md-4"><strong>Целевой дебит:</strong> ${data.reservoir.target_flow || '—'} м³/сут</div>`;
+            html += `<div class="col-md-4"><strong>Забойное давление:</strong> ${data.reservoir.bottom_hole_pressure || '—'} МПа</div>`;
+            html += `<div class="col-md-4"><strong>Депрессия:</strong> ${data.reservoir.depression || '—'} МПа</div>`;
+            html += `<div class="col-md-4"><strong>Динамический уровень:</strong> ${data.reservoir.dynamic_level || '—'} м</div>`;
+            html += `<div class="col-md-4"><strong>Макс. дебит:</strong> ${data.reservoir.max_possible_flow || '—'} м³/сут</div>`;
+            if (data.reservoir.flow_percent_of_max) {
+                let color = data.reservoir.flow_percent_of_max > 90 ? 'danger' :
+                           data.reservoir.flow_percent_of_max > 75 ? 'warning' : 'success';
+                html += `<div class="col-md-4"><strong>Отбор от макс.:</strong> <span class="badge bg-${color}">${data.reservoir.flow_percent_of_max}%</span></div>`;
+            }
+            html += '</div></div></div>';
+        }
+
+        // 3. Свойства жидкости
+        if (data.fluid) {
+            html += '<div class="card mb-3">';
+            html += '<div class="card-header bg-success text-white"><h6 class="mb-0">💧 Свойства жидкости</h6></div>';
+            html += '<div class="card-body"><div class="row">';
+            html += `<div class="col-md-3"><strong>ρ нефти:</strong> ${data.fluid.oil_density || '—'} кг/м³</div>`;
+            html += `<div class="col-md-3"><strong>ρ воды:</strong> ${data.fluid.water_density || '—'} кг/м³</div>`;
+            html += `<div class="col-md-3"><strong>ρ смеси (без газа):</strong> ${data.fluid.mixture_density_no_gas || '—'} кг/м³</div>`;
+            html += `<div class="col-md-3"><strong>P_нас:</strong> ${data.fluid.bubble_point_pressure || '—'} МПа</div>`;
+            html += `<div class="col-md-3"><strong>B (объемный):</strong> ${data.fluid.oil_volume_factor || '—'}</div>`;
+            html += '</div></div></div>';
+        }
+
+        // 4. Параметры на приеме
+        if (data.intake) {
+            let gasBadge = data.intake.need_separator ?
+                '<span class="badge bg-danger ms-2">⚠️ Требуется газосепаратор</span>' :
+                '<span class="badge bg-success ms-2">✓ Норма</span>';
+
+            html += '<div class="card mb-3">';
+            html += '<div class="card-header bg-warning"><h6 class="mb-0">⬇️ Параметры на приеме насоса</h6></div>';
+            html += '<div class="card-body"><div class="row">';
+
+            // Давление с защитой от null
+            let intakePressure = data.intake.intake_pressure !== null && data.intake.intake_pressure !== undefined
+                ? data.intake.intake_pressure.toFixed(2) : '—';
+            let minPressure = data.intake.min_intake_pressure !== null && data.intake.min_intake_pressure !== undefined
+                ? data.intake.min_intake_pressure.toFixed(2) : '—';
+
+            html += `<div class="col-md-4"><strong>P_пр:</strong> ${intakePressure} МПа</div>`;
+            html += `<div class="col-md-4"><strong>P_пр мин:</strong> ${minPressure} МПа</div>`;
+
+            // Запас по давлению с цветом
+            let pressureMargin = data.intake.pressure_margin;
+            let pressureColor = 'secondary';
+            let pressureText = '—';
+
+            if (pressureMargin !== null && pressureMargin !== undefined) {
+                pressureText = pressureMargin.toFixed(2);
+                if (pressureMargin > 1) {
+                    pressureColor = 'success';
+                } else if (pressureMargin > 0) {
+                    pressureColor = 'warning';
+                } else if (pressureMargin === 0) {
+                    pressureColor = 'danger';
+                } else {
+                    pressureColor = 'danger';
+                }
+            }
+
+            html += `<div class="col-md-4"><strong>Запас:</strong> <span class="badge bg-${pressureColor}">${pressureText} МПа</span></div>`;
+
+            // Газ
+            let gasFraction = data.intake.gas_fraction !== null && data.intake.gas_fraction !== undefined
+                ? data.intake.gas_fraction.toFixed(1) : '—';
+            html += `<div class="col-md-4"><strong>Газосодержание:</strong> ${gasFraction}%</div>`;
+            html += `<div class="col-md-4"><strong>Статус:</strong> ${gasBadge}</div>`;
+
+            // Плотность
+            let density = data.intake.density !== null && data.intake.density !== undefined
+                ? data.intake.density.toFixed(1) : '—';
+            let densityNoGas = data.intake.density_no_gas !== null && data.intake.density_no_gas !== undefined
+                ? data.intake.density_no_gas.toFixed(1) : '—';
+            let densityDiff = data.intake.density_diff !== null && data.intake.density_diff !== undefined
+                ? data.intake.density_diff.toFixed(1) : '—';
+
+            html += `<div class="col-md-4"><strong>ρ смеси (с газом):</strong> ${density} кг/м³</div>`;
+            html += `<div class="col-md-4"><strong>ρ смеси (без газа):</strong> ${densityNoGas} кг/м³</div>`;
+            html += `<div class="col-md-4"><strong>Разница:</strong> ${densityDiff} кг/м³</div>`;
+
+            html += '</div></div></div>';
+        }
+
+        // 5. Гидравлика НКТ
+        if (data.hydraulics) {
+            html += '<div class="card mb-3">';
+            html += '<div class="card-header bg-info text-white"><h6 class="mb-0">🔄 Гидравлика НКТ</h6></div>';
+            html += '<div class="card-body"><div class="row">';
+
+            let innerDiameter = data.hydraulics.nkt_inner_diameter_mm !== null && data.hydraulics.nkt_inner_diameter_mm !== undefined
+                ? data.hydraulics.nkt_inner_diameter_mm.toFixed(1) : '—';
+            let velocity = data.hydraulics.velocity !== null && data.hydraulics.velocity !== undefined
+                ? data.hydraulics.velocity.toFixed(2) : '—';
+            let reynolds = data.hydraulics.reynolds !== null && data.hydraulics.reynolds !== undefined
+                ? data.hydraulics.reynolds.toFixed(0) : '—';
+            let lambda = data.hydraulics.lambda_coef !== null && data.hydraulics.lambda_coef !== undefined
+                ? data.hydraulics.lambda_coef.toFixed(4) : '—';
+            let lossPer1000 = data.hydraulics.friction_loss_per_1000m !== null && data.hydraulics.friction_loss_per_1000m !== undefined
+                ? data.hydraulics.friction_loss_per_1000m.toFixed(2) : '—';
+
+            html += `<div class="col-md-3"><strong>d внутр:</strong> ${innerDiameter} мм</div>`;
+            html += `<div class="col-md-3"><strong>Скорость:</strong> ${velocity} м/с</div>`;
+            html += `<div class="col-md-3"><strong>Re:</strong> ${reynolds}</div>`;
+
+            let regimeColor = data.hydraulics.flow_regime === 'турбулентный' ? 'success' :
+                             data.hydraulics.flow_regime === 'переходный' ? 'warning' : 'secondary';
+            html += `<div class="col-md-3"><strong>Режим:</strong> <span class="badge bg-${regimeColor}">${data.hydraulics.flow_regime || '—'}</span></div>`;
+
+            html += `<div class="col-md-3"><strong>λ (коэф. трения):</strong> ${lambda}</div>`;
+            html += `<div class="col-md-3"><strong>Потери на 1000 м:</strong> ${lossPer1000} м</div>`;
+            html += '</div></div></div>';
+        }
+
+        // 6. Составляющие напора
+        if (data.head_components) {
+            html += '<div class="card mb-3">';
+            html += '<div class="card-header bg-dark text-white"><h6 class="mb-0">📊 Составляющие напора</h6></div>';
+            html += '<div class="card-body">';
+
+            // Таблица с составляющими
+            html += '<table class="table table-sm">';
+            html += '<tr><th>Составляющая</th><th>Значение</th><th>Формула</th></tr>';
+
+            const components = data.head_components.components || {};
+            for (let key in components) {
+                let comp = components[key];
+                let value = comp.value !== null && comp.value !== undefined ? comp.value.toFixed(1) : '0';
+                html += `<tr>
+                    <td>${comp.description || key}</td>
+                    <td><strong>${value} м</strong></td>
+                    <td><small class="text-muted">${comp.formula || ''}</small></td>
+                </tr>`;
+            }
+
+            // Итог
+            let totalHead = data.head_components.total_head !== null && data.head_components.total_head !== undefined
+                ? data.head_components.total_head.toFixed(1) : '0';
+            html += `<tr class="table-primary">
+                <td><strong>ИТОГО потребный напор</strong></td>
+                <td><strong>${totalHead} м</strong></td>
+                <td><small>${data.head_components.total_head_formula || ''}</small></td>
+            </tr>`;
+            html += '</table>';
+
+            html += '</div></div>';
+        }
+
+        // 7. Рекомендации
+        if (data.recommendations && data.recommendations.length > 0) {
+            html += '<div class="card mb-3">';
+            html += '<div class="card-header bg-success text-white"><h6 class="mb-0">✅ Рекомендации</h6></div>';
+            html += '<div class="card-body">';
+
+            data.recommendations.forEach(rec => {
+                let bgColor = rec.type === 'success' ? 'success' :
+                             rec.type === 'warning' ? 'warning' : 'danger';
+                html += `<div class="alert alert-${bgColor} mb-2">`;
+                html += `<i class="fas fa-${rec.icon || 'info-circle'} me-2"></i>`;
+                html += `<strong>${rec.parameter}:</strong> ${rec.message}<br>`;
+                html += `<small>👉 ${rec.action}</small>`;
+                html += '</div>';
+            });
+
+            html += '</div></div>';
+        }
+
+        // 8. Метаданные
+        if (data.metadata) {
+            html += '<div class="small text-muted text-end mt-2">';
+            let reportDate = data.metadata.report_generated ? new Date(data.metadata.report_generated).toLocaleString('ru-RU') : '—';
+            html += `Отчет сформирован: ${reportDate}<br>`;
+            html += `Методика: ${data.metadata.calculation_method || 'СТО ТН 229-2017'}`;
+            html += '</div>';
+        }
+
+        reportContent.innerHTML = html;
     }
 
     // ===== ИСПОЛЬЗОВАНИЕ РЕКОМЕНДОВАННОГО ДЕБИТА =====
     if (useRecommendedBtn) {
         useRecommendedBtn.addEventListener('click', function() {
             const recFlow = document.getElementById('calc-rec-flow').textContent;
-            if (recFlow && recFlow !== '—' && !recFlow.includes('spinner') && targetFlow) {
+            if (recFlow && recFlow !== '—' && !recFlow.includes('spinner')) {
                 targetFlow.value = parseFloat(recFlow);
                 // Обновляем расчеты с новым значением
-                if (wellSelect && wellSelect.value) {
+                if (wellSelect.value) {
                     loadWellCalculations(wellSelect.value);
                 }
             }
         });
     }
 
-    // ===== СОБЫТИЯ =====
-    if (selectionType) {
-        selectionType.addEventListener('change', toggleFields);
+    // ===== КНОПКА ОТЧЕТА =====
+    if (reportBtn) {
+        reportBtn.addEventListener('click', function() {
+            if (!wellSelect.value) {
+                alert('Сначала выберите скважину');
+                return;
+            }
+            loadFullReport(wellSelect.value);
+        });
     }
+
+    // ===== СОБЫТИЯ =====
+    selectionType.addEventListener('change', toggleFields);
 
     if (wellSelect) {
         wellSelect.addEventListener('change', function() {
+            // скрываем результаты при смене скважины
+            resultsCard.style.display = 'none';
+            resultsContainer.innerHTML = '';
+            resultsCount.textContent = '0';
+            loadingSpinner.style.display = 'none';
             loadWellCalculations(this.value);
-            // Очищаем результаты при смене скважины
-            if (resultsCard) {
-                resultsCard.style.display = 'none';
-                resultsContainer.innerHTML = '';
-                resultsCount.textContent = '0';
-            }
         });
     }
 
     if (targetFlow) {
         targetFlow.addEventListener('input', function() {
-            if (wellSelect && wellSelect.value) {
-                // Задержка, чтобы не спамить запросами
-                clearTimeout(window.calcTimeout);
-                window.calcTimeout = setTimeout(() => {
+            // Задержка, чтобы не спамить запросами
+            clearTimeout(window.calcTimeout);
+            window.calcTimeout = setTimeout(() => {
+                if (wellSelect.value) {
                     loadWellCalculations(wellSelect.value);
-                }, 500);
-            }
+                }
+            }, 500);
         });
     }
 
@@ -323,109 +662,123 @@ document.addEventListener('DOMContentLoaded', function() {
     toggleFields();
 
     // ===== ОБРАБОТЧИК ОТПРАВКИ ФОРМЫ =====
-    if (searchForm) {
-        searchForm.addEventListener('submit', function(e) {
-            e.preventDefault();  // ОЧЕНЬ ВАЖНО - отменяет перезагрузку страницы
+    searchForm.addEventListener('submit', function(e) {
+        e.preventDefault();
 
-            // Показываем спиннер и скрываем предыдущие результаты
-            loadingSpinner.style.display = 'block';
-            resultsContainer.innerHTML = '';
-            resultsCard.style.display = 'none';
+        // Показываем спиннер и скрываем предыдущие результаты
+        loadingSpinner.style.display = 'block';
+        resultsContainer.innerHTML = '';
+        resultsCard.style.display = 'none';
 
-            const selectedType = selectionType.value;
-            let apiUrl = '';
-            let formData = new FormData(searchForm);
-            let params = new URLSearchParams();
+        const selectedType = selectionType.value;
+        let apiUrl = '';
+        let formData = new FormData(searchForm);
+        let params = new URLSearchParams();
 
-            // Формируем URL и параметры в зависимости от типа подбора
-            if (selectedType === 'pump') {
-                apiUrl = '/api/pumps/find_suitable/';
-                params.append('required_flow', formData.get('required_flow'));
-                params.append('required_head', formData.get('required_head'));
+        if (selectedType === 'pump') {
+            apiUrl = '/api/pumps/find_suitable/';
+            params.append('required_flow', formData.get('required_flow'));
+            params.append('required_head', formData.get('required_head'));
+        }
+        else if (selectedType === 'motor') {
+            apiUrl = '/api/motors/find_for_pump/';
+            params.append('pump_power', formData.get('pump_power'));
+            if (formData.get('voltage')) {
+                params.append('voltage', formData.get('voltage'));
             }
-            else if (selectedType === 'motor') {
-                apiUrl = '/api/motors/find_for_pump/';
-                params.append('pump_power', formData.get('pump_power'));
-                if (formData.get('voltage')) {
-                    params.append('voltage', formData.get('voltage'));
-                }
-                params.append('service_factor', formData.get('service_factor'));
-                params.append('min_efficiency', formData.get('min_efficiency'));
-                if (formData.get('max_vibration')) {
-                    params.append('max_vibration', formData.get('max_vibration'));
-                }
+            params.append('service_factor', formData.get('service_factor'));
+            params.append('min_efficiency', formData.get('min_efficiency'));
+            if (formData.get('max_vibration')) {
+                params.append('max_vibration', formData.get('max_vibration'));
             }
-            else if (selectedType === 'well') {
-                apiUrl = '/api/pumps/select_for_well/';
-                params.append('well_id', formData.get('well_id'));
-                if (formData.get('target_flow')) {
-                    params.append('target_flow', formData.get('target_flow'));
-                }
-                params.append('service_factor', formData.get('well-service-factor'));
+        }
+        else if (selectedType === 'well') {
+            apiUrl = '/api/pumps/select_for_well/';
+            params.append('well_id', formData.get('well_id'));
+            if (formData.get('target_flow')) {
+                params.append('target_flow', formData.get('target_flow'));
             }
+            params.append('service_factor', formData.get('well-service-factor'));
+        }
 
-            // Выполняем запрос
-            fetch(`${apiUrl}?${params.toString()}`)
-                .then(response => {
-                    if (!response.ok) {
-                        return response.json().then(err => {
-                            throw new Error(err.error || 'Ошибка сервера');
-                        });
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    loadingSpinner.style.display = 'none';
+        fetch(`${apiUrl}?${params.toString()}`)
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw new Error(err.error || 'Ошибка сервера'); });
+                }
+                return response.json();
+            })
+            .then(data => {
+                loadingSpinner.style.display = 'none';
 
-                    let results = [];
-                    let count = 0;
+                let results = [];
+                let count = 0;
 
+                if (selectedType === 'pump') {
+                    results = data.pumps || [];
+                    count = data.found_count || results.length;
+                } else if (selectedType === 'motor') {
+                    results = data.motors || [];
+                    count = data.found_count || results.length;
+                } else if (selectedType === 'well') {
+                    results = data.recommendations || [];
+                    count = data.found_count || results.length;
+                }
+
+                resultsCount.textContent = count;
+
+                let tableHtml = '';
+
+                if (results.length === 0) {
+                    tableHtml = '<div class="alert alert-info">Ничего не найдено. Попробуйте изменить параметры поиска</div>';
+                } else {
                     if (selectedType === 'pump') {
-                        results = data.pumps || [];
-                        count = data.found_count || results.length;
+                        tableHtml = generatePumpTable(results);
                     } else if (selectedType === 'motor') {
-                        results = data.motors || [];
-                        count = data.found_count || results.length;
+                        tableHtml = generateMotorTable(results);
                     } else if (selectedType === 'well') {
-                        results = data.recommendations || [];
-                        count = data.found_count || results.length;
+                        tableHtml = generateWellTable(results);
                     }
+                }
 
-                    resultsCount.textContent = count;
-
-                    let tableHtml = '';
-
-                    if (results.length === 0) {
-                        tableHtml = '<div class="alert alert-info">Ничего не найдено. Попробуйте изменить параметры поиска</div>';
-                    } else {
-                        if (selectedType === 'pump') {
-                            tableHtml = generatePumpTable(results);
-                        } else if (selectedType === 'motor') {
-                            tableHtml = generateMotorTable(results);
-                        } else if (selectedType === 'well') {
-                            tableHtml = generateWellTable(results);
-                        }
-                    }
-
-                    resultsContainer.innerHTML = tableHtml;
-                    resultsCard.style.display = 'block';
-                })
-                .catch(error => {
-                    loadingSpinner.style.display = 'none';
-                    resultsContainer.innerHTML = `
-                        <div class="alert alert-danger">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            Ошибка: ${error.message}
-                        </div>
-                    `;
-                    resultsCard.style.display = 'block';
-                    resultsCount.textContent = '0';
-                });
-        });
-    }
+                resultsContainer.innerHTML = tableHtml;
+                resultsCard.style.display = 'block';
+            })
+            .catch(error => {
+                loadingSpinner.style.display = 'none';
+                resultsContainer.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Ошибка: ${error.message}
+                    </div>
+                `;
+                resultsCard.style.display = 'block';
+                resultsCount.textContent = '0';
+            });
+    });
 
     // ===== ФУНКЦИИ ГЕНЕРАЦИИ ТАБЛИЦ =====
     function generatePumpTable(pumps) {
+        // Функция для определения статуса эффективности
+        function getEfficiencyStatus(calculated, max) {
+            if (!calculated || !max) return { text: "Н/Д", color: "secondary" };
+
+            const ratio = (calculated / max) * 100;
+            if (ratio > 90) return { text: "Отлично", color: "success" };
+            if (ratio > 75) return { text: "Хорошо", color: "info" };
+            if (ratio > 60) return { text: "Удовл.", color: "warning" };
+            return { text: "Плохо", color: "danger" };
+        }
+
+        // Функция для цвета бейджа максимального КПД
+        function getMaxEfficiencyColor(efficiency) {
+            if (!efficiency) return "secondary";
+            if (efficiency >= 45) return "success";
+            if (efficiency >= 40) return "info";
+            if (efficiency >= 35) return "warning";
+            return "danger";
+        }
+
         let html = `
             <table class="table table-striped table-hover">
                 <thead class="table-dark">
@@ -434,7 +787,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         <th>Производитель</th>
                         <th>Номин. расход (м³/сут)</th>
                         <th>Номин. напор (м)</th>
-                        <th>Макс. КПД (%)</th>
+                        <th>Макс. КПД</th>
+                        <th>Эффективность в точке</th>
                         <th>Раб. диапазон</th>
                         <th>Действия</th>
                     </tr>
@@ -442,20 +796,30 @@ document.addEventListener('DOMContentLoaded', function() {
                 <tbody>
         `;
 
-        pumps.forEach(pump => {
+        pumps.forEach((pump) => {
+            const maxEff = pump.max_efficiency || 0;
+            const calcEff = pump.calculated_efficiency || 0;
+            const status = getEfficiencyStatus(calcEff, maxEff);
+            const maxEffColor = getMaxEfficiencyColor(maxEff);
+
             html += `
                 <tr>
-                    <td><strong>${pump.harka_stupen || pump.name || '—'}</strong></td>
-                    <td>${pump.zavod || pump.manufacturer || '—'}</td>
-                    <td>${pump.nominal_range || pump.nominal_flow || '—'}</td>
-                    <td>${pump.nominal_head || pump.head || '—'}</td>
+                    <td><strong>${pump.harka_stupen || pump.name || "—"}</strong></td>
+                    <td>${pump.zavod || pump.manufacturer || "—"}</td>
+                    <td>${pump.nominal_range || pump.nominal_flow || "—"}</td>
+                    <td>${pump.nominal_head || pump.head || "—"}</td>
                     <td>
-                        <span class="badge bg-${(pump.max_efficiency || 0) >= 40 ? 'success' :
-                                               (pump.max_efficiency || 0) >= 30 ? 'warning' : 'danger'}">
-                            ${pump.max_efficiency || pump.efficiency || '—'}%
+                        <span class="badge bg-${maxEffColor}" title="Максимальный КПД насоса">
+                            ${maxEff.toFixed(1)}%
                         </span>
                     </td>
-                    <td>${pump.left_range || '—'} - ${pump.right_range || '—'}</td>
+                    <td>
+                        <span class="badge bg-${status.color}"
+                              title="Макс. КПД: ${maxEff.toFixed(1)}%, Текущий: ${calcEff.toFixed(1)}%">
+                            ${status.text} (${calcEff.toFixed(1)}%)
+                        </span>
+                    </td>
+                    <td>${pump.left_range || "—"} - ${pump.right_range || "—"}</td>
                     <td>
                         <a href="/pumps/${pump.id}/" class="btn btn-sm btn-info">
                             <i class="fas fa-eye"></i>
@@ -493,12 +857,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (motor.vibration_level > 7.1) vibColor = 'danger';
             else if (motor.vibration_level > 4.5) vibColor = 'warning';
 
-            let efficiency = motor.efficiency || 0;
-            let efficiencyClass = 'danger';
-            if (efficiency >= 90) efficiencyClass = 'success';
-            else if (efficiency >= 85) efficiencyClass = 'info';
-            else if (efficiency >= 80) efficiencyClass = 'warning';
-
             html += `
                 <tr>
                     <td><strong>${motor.model || '—'}</strong></td>
@@ -506,8 +864,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td>${motor.nominal_power || motor.power || '—'}</td>
                     <td>${motor.nominal_voltage || motor.voltage || '—'}</td>
                     <td>
-                        <span class="badge bg-${efficiencyClass}">
-                            ${efficiency.toFixed(1)}%
+                        <span class="badge bg-${(motor.efficiency || 0) >= 90 ? 'success' :
+                                               (motor.efficiency || 0) >= 85 ? 'info' :
+                                               (motor.efficiency || 0) >= 80 ? 'warning' : 'danger'}">
+                            ${motor.efficiency || '—'}%
                         </span>
                     </td>
                     <td>${motor.power_factor || '—'}</td>
@@ -549,14 +909,9 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
 
         recommendations.forEach(rec => {
-            const pumpEfficiency = rec.pump_at_point?.efficiency || 0;
-            const motorEfficiency = rec.motor?.efficiency || 0;
             const overallEfficiency = rec.overall_efficiency ||
-                (pumpEfficiency && motorEfficiency ? (pumpEfficiency * motorEfficiency / 100) : 0);
-
-            let overallClass = 'danger';
-            if (overallEfficiency >= 35) overallClass = 'success';
-            else if (overallEfficiency >= 30) overallClass = 'warning';
+                (rec.pump?.efficiency && rec.motor?.efficiency ?
+                 (rec.pump.efficiency * rec.motor.efficiency / 100) : 0);
 
             html += `
                 <tr>
@@ -573,18 +928,19 @@ document.addEventListener('DOMContentLoaded', function() {
                         <br>H: ${rec.pump_at_point?.head || rec.head || '—'} м
                     </td>
                     <td>
-                        <span class="badge bg-${pumpEfficiency >= 40 ? 'success' : 'warning'}">
-                            ${pumpEfficiency.toFixed(1)}%
+                        <span class="badge bg-${(rec.pump_at_point?.efficiency || 0) >= 40 ? 'success' : 'warning'}">
+                            ${(rec.pump_at_point?.efficiency || 0).toFixed(1)}%
                         </span>
                     </td>
                     <td>
-                        <span class="badge bg-${motorEfficiency >= 90 ? 'success' :
-                                               motorEfficiency >= 85 ? 'info' : 'warning'}">
-                            ${motorEfficiency.toFixed(1)}%
+                        <span class="badge bg-${(rec.motor?.efficiency || 0) >= 90 ? 'success' :
+                                               (rec.motor?.efficiency || 0) >= 85 ? 'info' : 'warning'}">
+                            ${(rec.motor?.efficiency || 0).toFixed(1)}%
                         </span>
                     </td>
                     <td>
-                        <span class="badge bg-${overallClass}">
+                        <span class="badge bg-${overallEfficiency >= 35 ? 'success' :
+                                               overallEfficiency >= 30 ? 'warning' : 'danger'}">
                             ${overallEfficiency.toFixed(1)}%
                         </span>
                     </td>

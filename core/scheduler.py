@@ -1,6 +1,5 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
-from apscheduler.triggers.cron import CronTrigger
 import atexit
 import logging
 from django.core.management import call_command
@@ -16,25 +15,16 @@ class TelemetryScheduler:
         self._setup_jobs()
 
     def _setup_jobs(self):
-        """Настройка задач."""
+        """Настройка задач планировщика."""
 
-        # Задача 1: Сбор телеметрии каждые 30 секунд
+        # Сбор телеметрии каждые 120 секунд
         self.scheduler.add_job(
             func=self.fetch_all_telemetry,
-            trigger=IntervalTrigger(seconds=120),
-            id='fetch_telemetry_30s',
+            trigger=IntervalTrigger(seconds=60),
+            id='fetch_telemetry',
             name='Сбор телеметрии всех скважин',
             replace_existing=True,
-            misfire_grace_time=120
-        )
-
-        # Задача 2: Проверка уставок каждую минуту
-        self.scheduler.add_job(
-            func=self.check_alerts,
-            trigger=IntervalTrigger(seconds=160),
-            id='check_alerts_60s',
-            name='Проверка уставок',
-            replace_existing=True
+            misfire_grace_time=60
         )
 
         logger.info("Задачи планировщика настроены")
@@ -42,46 +32,38 @@ class TelemetryScheduler:
     def fetch_all_telemetry(self):
         """Запуск сбора телеметрии для всех скважин."""
         try:
-            logger.info("Запуск сбора телеметрии...")
-            # call_command('fetch_telemetry')
-            call_command('fetch_telemetry', '--well-id', '1')
-            logger.info("Сбор телеметрии завершен")
-        except Exception as e:
-            logger.error(f"Ошибка сбора телеметрии: {e}")
+            logger.info("🚀 Запуск сбора телеметрии...")
 
-    def check_alerts(self):
-        """Проверка уставок и создание уведомлений."""
-        try:
-            from core.services.alert_service import AlertService
-            alerts = AlertService.check_all_wells()
-            if alerts:
-                logger.info(f"Создано {len(alerts)} уведомлений")
+            # Вызываем нашу management команду
+            call_command('fetch_telemetry')
+
+            logger.info("✅ Сбор телеметрии завершен")
         except Exception as e:
-            logger.error(f"Ошибка проверки уставок: {e}")
+            logger.error(f"❌ Ошибка сбора телеметрии: {e}")
 
     def start(self):
         """Запуск планировщика."""
         try:
             self.scheduler.start()
-            logger.info("Планировщик запущен")
+            logger.info("✅ Планировщик запущен")
 
-            # Остановка при завершении
+            # Автоматическая остановка при завершении программы
             atexit.register(lambda: self.shutdown())
         except Exception as e:
-            logger.error(f"Ошибка запуска планировщика: {e}")
+            logger.error(f"❌ Ошибка запуска планировщика: {e}")
 
     def shutdown(self):
         """Остановка планировщика."""
         try:
             self.scheduler.shutdown()
-            logger.info("Планировщик остановлен")
+            logger.info("⏹ Планировщик остановлен")
         except Exception as e:
-            logger.error(f"Ошибка остановки планировщика: {e}")
+            logger.error(f"❌ Ошибка остановки планировщика: {e}")
 
     def get_jobs(self):
         """Получение списка задач."""
         return self.scheduler.get_jobs()
 
 
-# Создаем глобальный экземпляр
+# Создаем глобальный экземпляр планировщика
 scheduler = TelemetryScheduler()

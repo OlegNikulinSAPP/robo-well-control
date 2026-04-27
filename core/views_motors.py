@@ -173,20 +173,7 @@ class ElectricMotorViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def find_for_pump(self, request):
-        """
-        Подбор двигателей для насоса.
-
-        Параметры запроса:
-        - pump_power: требуемая мощность насоса, кВт
-        - voltage: напряжение сети, В
-        - service_factor: коэффициент запаса (по умолчанию 1.15)
-        - min_efficiency: минимальный КПД, % (по умолчанию 80)
-        :param request: HTTP запрос
-        :return: response: Подходящие двигатели
-        """
-
         pump_power = request.query_params.get('pump_power')
-        voltage = request.query_params.get('voltage')
 
         if not pump_power:
             return Response(
@@ -196,58 +183,81 @@ class ElectricMotorViewSet(viewsets.ModelViewSet):
 
         try:
             pump_power_value = float(pump_power)
-            voltage_value = float(voltage) if voltage else None
-
+            voltage_value = float(request.query_params.get('voltage')) if request.query_params.get('voltage') else None
             service_factor = float(request.query_params.get('service_factor', 1.15))
-            min_efficiency = float(request.query_params.get('min_efficiency', 80))
 
-            # Расчет требуемой мощности двигателя
+            # Максимальный коэффициент запаса (по умолчанию 1.5, т.е. не больше 50% запаса)
+            max_power_factor = float(request.query_params.get('max_power_factor', 1.5))
+
+            # Требуемая мощность с запасом
             required_power = pump_power_value * service_factor
 
-            # Базовый запрос - ИСПРАВЛЕНО: убраны фигурные скобки и исправлены имена полей
-            queryset = self.get_queryset().filter(
-                nominal_power__gte=required_power * 0.9,
-                nominal_power__lte=required_power * 1.2,
-                efficiency__gte=min_efficiency  # ИСПРАВЛЕНО: efficiency, а не min_efficiency
-            )
+            # Верхняя граница: требуемая мощность * max_power_factor
+            max_power = required_power * max_power_factor
 
-            # Фильтрация по напряжению если указано
+            # Получаем все двигатели
+            all_motors = self.get_queryset()
+
+            # Фильтр по напряжению (если указан)
             if voltage_value:
-                # Допуск ±10%
-                queryset = queryset.filter(
+                all_motors = all_motors.filter(
                     nominal_voltage__gte=voltage_value * 0.9,
                     nominal_voltage__lte=voltage_value * 1.1
                 )
 
-            suitable_motors = []
+            # Фильтр по КПД (если указан)
+            min_efficiency = request.query_params.get('min_efficiency')
+            if min_efficiency:
+                try:
+                    min_eff_value = float(min_efficiency)
+                    if min_eff_value > 0:
+                        all_motors = all_motors.filter(efficiency__gte=min_eff_value)
+                except ValueError:
+                    pass
 
-            for motor in queryset:
+            # Ищем двигатели в диапазоне [required_power, max_power]
+            suitable_motors = all_motors.filter(
+                nominal_power__gte=required_power,
+                nominal_power__lte=max_power
+            ).order_by('nominal_power')
+
+            print(required_power, max_power)
+
+            # Если нет двигателей в основном диапазоне, берем ближайшие, но не слишком мощные
+            if not suitable_motors.exists():
+                min_acceptable = required_power * 0.8  # 10.86 кВт
+                max_acceptable = required_power * 2.0  # например, 27.14 кВт (можно настроить)
+
+                suitable_motors = all_motors.filter(
+                    nominal_power__gte=min_acceptable,
+                    nominal_power__lte=max_acceptable  # добавили верхнюю границу
+                ).order_by('nominal_power')  # сортируем по возрастанию, чтобы сначала шли ближайшие
+
+                print(min_acceptable)
+
+            # Формируем результат
+            motor_list = []
+            for motor in suitable_motors:
+                power_ratio = motor.nominal_power / required_power if required_power > 0 else 0
+
                 motor_data = ElectricMotorListSerializer(motor).data
-                motor_data['power_match_percentage'] = round(
-                    (motor.nominal_power / required_power) * 100, 1
-                )
-                motor_data['service_factor_actual'] = round(
-                    motor.nominal_power / pump_power_value, 2
-                )
+                motor_data['power_match_percentage'] = round(power_ratio * 100, 1)
+                motor_data['service_factor_actual'] = round(motor.nominal_power / pump_power_value, 2)
                 motor_data['vibration_status'] = motor.get_vibration_status()
-                suitable_motors.append(motor_data)
 
-            # Сортируем по КПД (по убыванию) и близости мощности
-            suitable_motors.sort(
-                key=lambda x: (x['efficiency'], -abs(100 - x['power_match_percentage'])),
-                reverse=True
-            )
+                motor_list.append(motor_data)
 
             return Response({
                 'search_parameters': {
                     'pump_power_kw': pump_power_value,
-                    'required_motor_power_kw': required_power,
+                    'required_motor_power_kw': round(required_power, 2),
                     'service_factor': service_factor,
+                    'max_power_factor': max_power_factor,
                     'min_efficiency': min_efficiency,
                     'voltage': voltage_value
                 },
-                'found_count': len(suitable_motors),
-                'motors': suitable_motors[:10]  # Ограничиваем 10 лучшими
+                'found_count': len(motor_list),
+                'motors': motor_list[:15]
             })
 
         except ValueError as e:

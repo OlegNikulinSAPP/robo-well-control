@@ -1,369 +1,393 @@
-{% extends "core/base.html" %} {% block title %}{{ well.name }} - RoboWell{%endblock %}
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}
+    {{ well.name }} - RoboWell
+{%endblock %}
+
 {% block content %}
-<div class="mb-4">
-  <nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-      <li class="breadcrumb-item">
-        <a href="{% url 'dashboard' %}">Главная</a>
-      </li>
-      <li class="breadcrumb-item"><a href="{% url 'well_list' %}">Скважины</a></li>
-      <li class="breadcrumb-item active">{{ well.name }}</li>
-    </ol>
-  </nav>
-</div>
-
-<!-- Well Header -->
-<div class="row mb-4">
-  <div class="col-md-8">
-    <h1><i class="fas fa-oil-well"></i> {{ well.name }}</h1>
-    {% if well.external_id %}
-    <p class="text-muted">External ID: {{ well.external_id }}</p>
-    {% endif %}
-  </div>
-  <div class="col-md-4 text-end">
-    <span class="badge bg-{{ well.is_active|yesno:'success,secondary' }} p-2">
-      {{ well.is_active|yesno:'В работе,Остановлена' }}
-    </span>
-  </div>
-</div>
-
-<!-- Main Info Cards -->
-<div class="row">
-  <div class="col-md-6">
-    <div class="card mb-4">
-      <div class="card-header bg-primary text-white">
-        <h5 class="mb-0">
-          <i class="fas fa-info-circle"></i> Basic Information
-        </h5>
-      </div>
-      <div class="card-body">
-        <table class="table table-hover">
-          <tr>
-            <th>Well Name:</th>
-            <td>{{ well.name }}</td>
-          </tr>
-          <tr>
-            <th>Well Depth:</th>
-            <td>{{ well.depth }} m</td>
-          </tr>
-          <tr>
-            <th>Casing Diameter:</th>
-            <td>{{ well.diameter }} mm</td>
-          </tr>
-          <tr>
-            <th>Pump Setting Depth:</th>
-            <td>{{ well.pump_depth }} m</td>
-          </tr>
-          <tr>
-            <th>Dynamic Level:</th>
-            <td>{{ well.dynamic_level }} m</td>
-          </tr>
-          <tr>
-            <th>Static Level:</th>
-            <td>{{ well.static_level }} m</td>
-          </tr>
-          <tr>
-            <th>Formation Debit:</th>
-            <td>{{ well.formation_debit }} m³/day</td>
-          </tr>
-        </table>
-      </div>
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Главная</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'well_list' %}">Скважины</a></li>
+                <li class="breadcrumb-item active">{{ well.name }}</li>
+            </ol>
+        </nav>
     </div>
-  </div>
+    <div class="col-md-4 text-end" id="well-actions">
+        {% if user.is_authenticated and user.is_staff %}
+        <a href="/admin/core/well/{{ well.id }}/change/"
+           class="btn btn-sm btn-secondary"
+           target="_blank">
+            <i class="fas fa-edit"></i> Редактировать
+        </a>
+        {% endif %}
+    </div>
+</div>
 
-  <div class="col-md-6">
-    <div class="card mb-4">
-      <div class="card-header bg-success text-white">
-        <h5 class="mb-0"><i class="fas fa-chart-line"></i> Current Status</h5>
-      </div>
-      <div class="card-body">
-        <div id="well-status">
-          <div class="text-center">
-            <div class="spinner-border text-primary" role="status">
-              <span class="visually-hidden">Loading...</span>
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h1 class="mb-1">🛢️ {{ well.name }}</h1>
+        {% if well.external_id %}
+        <p class="text-muted mb-0">ID во внешней системе: {{ well.external_id }}</p>
+        {% endif %}
+    </div>
+
+    <div class="col-md-4 text-md-end mt-2 mt-md-0">
+        <div id="well-status-badge">
+            Состояние ПЭД:
+            {% if status_data %}
+            <span class="badge bg-{{ status_data.is_running|yesno:'success,secondary' }} p-2 ms-1">
+                {{ status_data.text }}
+            </span>
+            {% if not status_data.is_running and status_data.stop_reason %}
+            <br>
+            <small class="text-muted">
+                Причина: {{ status_data.stop_reason }}
+                {% if status_data.is_emergency %}
+                <span class="badge bg-danger ms-1">АВАРИЯ!</span>
+                {% endif %}
+            </small>
+            {% endif %}
+            {% else %}
+            <span class="badge bg-{{ well.is_active|yesno:'success,secondary' }} p-2 ms-1">
+                {{ well.is_active|yesno:'В работе,Остановлена' }}
+            </span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- ==================== РЯД 1 ==================== -->
+<div class="row g-2 mb-4">
+
+    <!-- 1-я колонка: изображение -->
+    <div class="col-md-3 col-xl-2 d-flex">
+        <div class="card w-100 border-0 bg-transparent"
+             style="background-image: url('/static/images/station.png');
+                    background-size: contain;
+                    background-position: center;
+                    background-repeat: no-repeat;">
+        </div>
+    </div>
+
+    <!-- 2-я колонка: Basic Information -->
+    <div class="col-md-9 col-xl-5 d-flex">
+        <div class="card w-100 card-dark overflow-hidden">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> Данные о скважине</h5>
             </div>
-            <p>Loading latest telemetry...</p>
-          </div>
+
+            <div class="card-body d-flex flex-column align-items-center justify-content-center">
+                <table class="table table-hover table-sm">
+                    <tbody>
+                    <tr class="bg-dark"><th colspan="2" class="text-center">Основная информация</th>  </tr>
+                    <tr><th>Название (номер) скважины:</th><td>{{ well.name }}</td></tr>
+                    <tr><th>ID во внешней системе:</th><td>{{ well.external_id }}</td></tr>
+                    <tr><th>Скважина активна и участвует в добыче:</th>
+                        <td>
+                            <span class="badge bg-{{ well.is_active|yesno:'success,secondary' }} p-2 ms-1">
+                                {{ well.is_active|yesno:'В работе,Остановлена' }}
+                            </span>
+                        </td>
+                    </tr>
+
+                    <tr class="bg-dark"><th colspan="2" class="text-center">Геологические параметры</th>  </tr>
+                    <tr><th>Глубина скважины:</th><td>{{ well.depth }} м</td></tr>
+                    <tr><th>Пластовое давление:</th><td>{{ well.reservoir_pressure }} МПа</td></tr>
+                    <tr><th>Коэффициент продуктивности:</th><td>{{ well.productivity_index }} м³/сут*МПа</td></tr>
+                    <tr><th>Внутренний диаметр эксплуатационной колонны:</th><td>{{ well.casing_inner_diameter }} мм</td></tr>
+
+                    <tr class="bg-dark"><th colspan="2" class="text-center">Параметры жидкости</th></tr>
+                    <tr><th>Плотность нефти:</th><td>{{ well.oil_density }} кг/м³</td></tr>
+                    <tr><th>Плотность воды:</th><td>{{ well.water_density }} кг/м³</td></tr>
+
+                    </tbody>
+                </table>
+            </div>
         </div>
-      </div>
     </div>
 
-    <div class="card mb-4">
-      <div class="card-header bg-info text-white">
-        <h5 class="mb-0"><i class="fas fa-calendar"></i> System Information</h5>
-      </div>
-      <div class="card-body">
-        <table class="table">
-          <tr>
-            <th>Created:</th>
-            <td>{{ well.created_at|date:"d.m.Y H:i" }}</td>
-          </tr>
-          <tr>
-            <th>Last Updated:</th>
-            <td>{{ well.updated_at|date:"d.m.Y H:i" }}</td>
-          </tr>
-        </table>
-      </div>
+    <!-- 3-я колонка: Basic Information -->
+    <div class="col-md-9 col-xl-5 d-flex">
+        <div class="card w-100 card-dark overflow-hidden">
+            <div class="card-body d-flex flex-column align-items-center justify-content-center">
+                <table class="table table-hover table-sm">
+                    <tbody>
+                    <tr><th>Газовый фактор:</th><td>{{ well.gas_factor }} м³/т</td></tr>
+                    <tr><th>Обводненность:</th><td>{{ well.water_cut }} %</td></tr>
+                    <tr><th>Давление насыщения:</th><td>{{ well.bubble_point_pressure }} МПа</td></tr>
+                    <tr><th>Объемный коэффициент нефти:</th><td>{{ well.oil_volume_factor }} МПа</td></tr>
+
+                    <tr class="bg-dark"><th colspan="2" class="text-center">Конструкция скважины</th>  </tr>
+                    <tr><th>Наружный диаметр НКТ:</th><td>{{ well.nkt_diameter }} мм</td></tr>
+                    <tr><th>Толщина стенки НКТ:</th><td>{{ well.nkt_wall_thickness }} мм</td></tr>
+                    <tr><th>Буферное давление:</th><td>{{ well.buffer_pressurebuffer_pressure }} МПа</td></tr>
+
+                    <tr class="bg-dark"><th colspan="2" class="text-center">Эксплуатационные параметры</th>  </tr>
+                    <tr><th>Пластовый дебит:</th><td>{{ well.formation_debit }} м³/сут</td></tr>
+                    <tr><th>Глубина спуска насоса:</th><td>{{ well.pump_depth|default:well.get_pump_depth|floatformat:0|default:"—" }} м</td></tr>
+
+                    <tr class="bg-dark"><th colspan="2" class="text-center">Системная информация</th></tr>
+                    <tr><th>Скважина заведена в систему:</th><td id="created-at">{{ well.created_at|date:"d.m.Y H:i" }}</td></tr>
+                    <tr><th>Последнее обновление:</th><td id="updated-at">{{ well.updated_at|date:"d.m.Y H:i" }}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
 
-<!-- Action Buttons -->
-<div class="row mt-3">
-  <div class="col-12">
-    <div class="card">
-      <div class="card-header bg-secondary text-white">
-        <h5 class="mb-0"><i class="fas fa-tasks"></i> Actions</h5>
-      </div>
-      <div class="card-body">
-        <div class="btn-group" role="group">
-          <a
-            href="{% url 'well_telemetry' well.id %}"
-            class="btn btn-warning btn-lg"
-          >
-            <i class="fas fa-chart-bar"></i> Telemetry
-          </a>
-          <a
-            href="{% url 'well_dashboard' well.id %}"
-            class="btn btn-success btn-lg"
-          >
-            <i class="fas fa-chart-line"></i> Dashboard
-          </a>
-          <button
-            type="button"
-            class="btn btn-primary btn-lg"
-            data-bs-toggle="modal"
-            data-bs-target="#controlModal"
-          >
-            <i class="fas fa-sliders-h"></i> Control
-          </button>
-          <a
-            href="/api/wells/{{ well.id }}/"
-            class="btn btn-info btn-lg"
-            target="_blank"
-          >
-            <i class="fas fa-code"></i> API
-          </a>
+<!-- ==================== РЯД 2 ==================== -->
+<div class="row g-4">
+
+        <!--     3-я колонка: Электрика-->
+        <div class="col-md-12 col-xl-4 d-flex">
+            <div class="card w-100 card-dark overflow-hidden">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-bolt"></i> Электрика</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-hover table-sm" id="electrics-table">
+                        <tbody>
+                        <!-- ТОКИ -->
+                        <tr class="bg-dark"><th colspan="2" class="text-center">⚡ Токи</th></tr>
+                        <tr><th>Ток фазы А:</th><td id="current-a">{{ telemetry.current_a|default:"—" }}</td></tr>
+                        <tr><th>Ток фазы B:</th><td id="current-b">{{ telemetry.current_b|default:"—" }}</td></tr>
+                        <tr><th>Ток фазы C:</th><td id="current-c">{{ telemetry.current_c|default:"—" }}</td></tr>
+                        <tr><th>Максимальный ток по фазам:</th><td id="max-current">{{ telemetry.max_current|default:"—" }}</td></tr>
+
+                        <!-- МОЩНОСТЬ -->
+                        <tr class="bg-dark"><th colspan="2" class="text-center">🔌 Мощность</th></tr>
+                        <tr><th>Среднее фазное напряжение:</th><td id="avg-voltage">{{ telemetry.avg_voltage|default:"—" }}</td></tr>
+                        <tr><th>Полная мощность:</th><td id="apparent-power">{{ telemetry.apparent_power|default:"—" }}</td></tr>
+                        <tr><th>Активная мощность:</th><td id="active-power">{{ telemetry.active_power|default:"—" }}</td></tr>
+
+                        <!-- ЭЛЕКТРИЧЕСКИЕ ПАРАМЕТРЫ -->
+                        <tr class="bg-dark"><th colspan="2" class="text-center">⚙️ Электрические параметры</th></tr>
+                        <tr><th>Сопротивление изоляции:</th><td id="insulation">{{ telemetry.insulation_resistance|default:"—" }}</td></tr>
+                        <tr><th>Cos φ:</th><td id="power-factor">{{ telemetry.power_factor|default:"—" }}</td></tr>
+                        <tr><th>Загрузка:</th><td id="load-percent">{{ telemetry.load_percent|default:"—" }}</td></tr>
+
+                        <!-- БАЛАНС -->
+                        <tr class="bg-dark"><th colspan="2" class="text-center">⚖️ Баланс</th></tr>
+                        <tr><th>Дисбаланс токов:</th><td id="current-unbalance">{{ telemetry.current_unbalance|default:"—" }}</td></tr>
+                        <tr><th>Дисбаланс напряжений:</th><td id="voltage-unbalance">{{ telemetry.voltage_unbalance|default:"—" }}</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
-      </div>
+
+    <!-- 4-я колонка: Технология -->
+    <div class="col-md-12 col-xl-4 d-flex">
+        <div class="card w-100 card-dark overflow-hidden">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-industry"></i> Технология</h5>
+            </div>
+            <div class="card-body d-flex flex-column align-items-center justify-content-center">
+                <table class="table table-hover table-sm" id="technology-table">
+                    <tbody>
+                    <!-- ДАВЛЕНИЕ И ТЕМПЕРАТУРА -->
+                    <tr class="bg-dark"><th colspan="2" class="text-center">🌡️ Давление и температура</th></tr>
+                    <tr><th>Давление на приеме:</th><td id="intake-pressure">{{ telemetry.intake_pressure|default:"—" }}</td></tr>
+                    <tr><th>Температура на приеме:</th><td id="intake-temperature">{{ telemetry.intake_temperature|default:"—" }}</td></tr>
+                    <tr><th>Температура двигателя:</th><td id="motor-temperature">{{ telemetry.motor_temperature|default:"—" }}</td></tr>
+                    <tr><th>Давление на выкиде:</th><td id="discharge-pressure">{{ telemetry.discharge_pressure|default:"—" }}</td></tr>
+                    <tr><th>Температура жидкости:</th><td id="fluid-temperature">{{ telemetry.fluid_temperature|default:"—" }}</td></tr>
+                    <tr><th>Температура ключей ПЧ:</th><td id="inverter-temp">{{ telemetry.inverter_temp|default:"—" }}</td></tr>
+
+                    <!-- ВИБРАЦИЯ -->
+                    <tr class="bg-dark"><th colspan="2" class="text-center">📳 Вибрация</th></tr>
+                    <tr><th>Вибрация X:</th><td id="vibration-x">{{ telemetry.vibration_x|default:"—" }}</td></tr>
+                    <tr><th>Вибрация Y:</th><td id="vibration-y">{{ telemetry.vibration_y|default:"—" }}</td></tr>
+                    <tr><th>Вибрация Z:</th><td id="vibration-z">{{ telemetry.vibration_z|default:"—" }}</td></tr>
+
+                    <!-- ЧАСТОТА И ДАВЛЕНИЕ -->
+                    <tr class="bg-dark"><th colspan="2" class="text-center">📊 Режим работы</th></tr>
+                    <tr><th>Частота ПЭД:</th><td id="frequency">{{ telemetry.frequency|default:"—" }}</td></tr>
+                    <tr><th>Давление в буфере:</th><td id="buffer-pressure">{{ telemetry.buffer_pressure|default:"—" }}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
-  </div>
-</div>
 
-<!-- Back button -->
-<div class="mt-3">
-  <a href="{% url 'well_list' %}" class="btn btn-secondary">
-    <i class="fas fa-arrow-left"></i> Back to List
-  </a>
-</div>
+    <!-- 5-я колонка: События -->
+    <div class="col-md-12 col-xl-4 d-flex">
+        <div class="card w-100 card-dark overflow-hidden">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"><i class="fas fa-history"></i> События</h5>
+            </div>
+            <div class="card-body d-flex flex-column align-items-center justify-content-center">
+                <table class="table table-hover table-sm" id="events-table">
+                    <tbody>
+                    <!-- СОСТОЯНИЯ -->
+                    <tr class="bg-dark"><th colspan="2" class="text-center">🔘 Состояния</th></tr>
+                    <tr><th>Состояние переключателя:</th><td id="switch-state">{{ telemetry.switch_state|default:"—" }}</td></tr>
 
-<!-- Control Modal -->
-<div class="modal fade" id="controlModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header bg-warning">
-        <h5 class="modal-title">
-          <i class="fas fa-sliders-h"></i> Control Well: {{ well.name }}
-        </h5>
-        <button
-          type="button"
-          class="btn-close"
-          data-bs-dismiss="modal"
-        ></button>
-      </div>
-      <div class="modal-body">
-        <!-- Frequency Control -->
-        <div class="mb-4">
-          <label class="form-label">
-            <strong>Frequency:</strong> <span id="freqValue">50</span> Hz
-          </label>
-          <input
-            type="range"
-            class="form-range"
-            id="frequency"
-            min="30"
-            max="60"
-            value="50"
-            step="0.1"
-          />
+                    <!-- ПУСКИ И ОСТАНОВЫ -->
+                    <tr class="bg-dark"><th colspan="2" class="text-center">🔄 Пуски и остановы</th></tr>
+                    <tr><th>Причина последнего отключения:</th><td id="stop-reason">{{ telemetry.stop_reason|default:"—" }}</td></tr>
+                    <tr><th>Вид последнего запуска:</th><td id="last-start-type">{{ telemetry.last_start_type|default:"—" }}</td></tr>
+
+                    <!-- ДАТЫ -->
+                    <tr class="bg-dark"><th colspan="2" class="text-center">📅 Даты</th></tr>
+                    <tr>
+                        <th>Дата/время последнего включения:</th>
+                        <td id="last-start-time">
+                            {% if telemetry.last_start_time %}
+                            {% with parts=telemetry.last_start_time.split %}
+                            {{ parts.0 }}<br>{{ parts.1 }}
+                            {% endwith %}
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Дата/время последнего отключения:</th>
+                        <td id="last-stop-time">
+                            {% if telemetry.last_stop_time %}
+                            {% with parts=telemetry.last_stop_time.split %}
+                            {{ parts.0 }}<br>{{ parts.1 }}
+                            {% endwith %}
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
-
-        <!-- Ramp Time -->
-        <div class="mb-4">
-          <label class="form-label">
-            <strong>Ramp Time:</strong> <span id="rampValue">30</span> s
-          </label>
-          <input
-            type="range"
-            class="form-range"
-            id="rampTime"
-            min="10"
-            max="120"
-            value="30"
-            step="5"
-          />
-        </div>
-
-        <!-- Control Buttons -->
-        <div class="d-grid gap-2">
-          <div class="btn-group" role="group">
-            <button class="btn btn-success" onclick="sendCommand('start')">
-              <i class="fas fa-play"></i> Start
-            </button>
-            <button class="btn btn-secondary" onclick="sendCommand('stop')">
-              <i class="fas fa-stop"></i> Stop
-            </button>
-            <button class="btn btn-danger" onclick="sendCommand('emergency')">
-              <i class="fas fa-exclamation-triangle"></i> Emergency Stop
-            </button>
-          </div>
-
-          <button class="btn btn-primary" onclick="sendCommand('frequency')">
-            <i class="fas fa-sliders-h"></i> Set Frequency
-          </button>
-
-          <button class="btn btn-info" onclick="calculateOptimal()">
-            <i class="fas fa-calculator"></i> Calculate Optimal Frequency
-          </button>
-        </div>
-
-        <!-- Result Message -->
-        <div id="commandResult" class="mt-3"></div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-          Close
-        </button>
-      </div>
     </div>
-  </div>
 </div>
-{% endblock %} {% block extra_js %}
+
+{% endblock %}
+
+{% block extra_js %}
 <script>
-  // Update displayed values
-  document.getElementById('frequency').addEventListener('input', function() {
-      document.getElementById('freqValue').textContent = this.value;
-  });
-  document.getElementById('rampTime').addEventListener('input', function() {
-      document.getElementById('rampValue').textContent = this.value;
-  });
+    // Функция обновления всех данных
+    function refreshAllData() {
+        fetch('/api/telemetry/latest/?well={{ well.id }}')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data && data.id) {
+                    console.log('Full telemetry update:', data);
 
-  // Load latest telemetry
-  function loadLatestTelemetry() {
-      fetch('/api/telemetry/latest/?well={{ well.id }}')
-          .then(response => response.json())
-          .then(data => {
-              let html = '<table class="table">';
-              if (data && data.id) {
-                  html += `
-                      <tr>
-                          <th>Last Update:</th>
-                          <td>${new Date(data.timestamp).toLocaleString('ru-RU')}</td>
-                      </tr>
-                      <tr>
-                          <th>Pressure:</th>
-                          <td>${data.intake_pressure || '—'} atm</td>
-                      </tr>
-                      <tr>
-                          <th>Temperature:</th>
-                          <td>${data.intake_temperature || '—'} °C</td>
-                      </tr>
-                      <tr>
-                          <th>Current A:</th>
-                          <td>${data.current_phase_a || '—'} A</td>
-                      </tr>
-                      <tr>
-                          <th>Frequency:</th>
-                          <td>${data.frequency || '—'} Hz</td>
-                      </tr>
-                  `;
-              } else {
-                  html += '<tr><td colspan="2" class="text-center">No telemetry data available</td></tr>';
-              }
-              html += '</table>';
-              document.getElementById('well-status').innerHTML = html;
-          })
-          .catch(error => {
-              document.getElementById('well-status').innerHTML =
-                  '<div class="alert alert-danger">Error loading telemetry</div>';
-          });
-  }
+                    // ========== ОБНОВЛЕНИЕ ЭЛЕКТРИКИ ==========
+                    updateElement('current-a', formatValue(data.current_a));
+                    updateElement('current-b', formatValue(data.current_b));
+                    updateElement('current-c', formatValue(data.current_c));
+                    updateElement('max-current', formatValue(data.max_current));
 
-  // Send command
-  function sendCommand(type) {
-      const resultDiv = document.getElementById('commandResult');
-      resultDiv.innerHTML = '<div class="alert alert-info">Sending command...</div>';
+                    // Мощность
+                    updateElement('avg-voltage', formatValue(data.avg_voltage));
+                    updateElement('apparent-power', formatValue(data.apparent_power));
+                    updateElement('active-power', formatValue(data.active_power));
 
-      let commandData = {
-          well_id: {{ well.id }},
-          frequency: 50  // default for non-frequency commands
-      };
+                    // Электрические параметры
+                    updateElement('insulation', formatValue(data.insulation_resistance));
+                    updateElement('power-factor', formatValue(data.power_factor));
+                    updateElement('load-percent', formatValue(data.load_percent, '%'));
+                    updateElement('current-unbalance', formatValue(data.current_unbalance));
+                    updateElement('voltage-unbalance', formatValue(data.voltage_unbalance));
 
-      if (type === 'frequency') {
-          commandData.frequency = parseFloat(document.getElementById('frequency').value);
-          commandData.ramp_time = parseInt(document.getElementById('rampTime').value);
-      } else if (type === 'start') {
-          commandData.command_type = 'start';
-      } else if (type === 'stop') {
-          commandData.command_type = 'stop';
-      } else if (type === 'emergency') {
-          commandData.command_type = 'emergency_stop';
-      }
+                    // ========== ОБНОВЛЕНИЕ ТЕХНОЛОГИИ ==========
+                    updateElement('intake-pressure', formatValue(data.intake_pressure));
+                    updateElement('intake-temperature', formatValue(data.intake_temperature));
+                    updateElement('motor-temperature', formatValue(data.motor_temperature));
 
-      commandData.reason = 'manual';
-      commandData.user = 'web_interface';
+                    // Вибрация
+                    updateElement('vibration-x', formatValue(data.vibration_x));
+                    updateElement('vibration-y', formatValue(data.vibration_y));
+                    updateElement('vibration-z', formatValue(data.vibration_z));
 
-      console.log('Sending command:', commandData);
+                    // Частота и давление
+                    updateElement('frequency', formatValue(data.frequency));
+                    updateElement('buffer-pressure', formatValue(data.buffer_pressure));
+                    updateElement('discharge-pressure', formatValue(data.discharge_pressure));
+                    updateElement('fluid-temperature', formatValue(data.fluid_temperature));
+                    updateElement('inverter-temp', formatValue(data.inverter_temp));
 
-      fetch('/api/control/adjust_frequency/', {
-          method: 'POST',
-          headers: {
-              'Content-Type': 'application/json',
-              'X-CSRFToken': '{{ csrf_token }}'
-          },
-          body: JSON.stringify(commandData)
-      })
-      .then(response => response.json())
-      .then(data => {
-          if (data.status === 'success') {
-              resultDiv.innerHTML = '<div class="alert alert-success">✓ Command sent successfully</div>';
-              // Close modal after 1 second
-              setTimeout(() => {
-                  document.querySelector('[data-bs-dismiss="modal"]').click();
-              }, 1000);
-          } else {
-              resultDiv.innerHTML = '<div class="alert alert-danger">✗ Error: ' +
-                  (data.message || JSON.stringify(data)) + '</div>';
-          }
-      })
-      .catch(error => {
-          resultDiv.innerHTML = '<div class="alert alert-danger">✗ Network error</div>';
-      });
-  }
+                    // ========== СОБЫТИЯ ==========
+                    updateElement('switch-state', data.switch_state || '—');
+                    updateElement('stop-reason', data.stop_reason || '—');
+                    updateElement('last-start-type', data.last_start_type || '—');
+                    updateElement('last-start-time', data.last_start_time || '—');
+                    updateElement('last-stop-time', data.last_stop_time || '—');
 
-  // Calculate optimal frequency
-  function calculateOptimal() {
-      const resultDiv = document.getElementById('commandResult');
-      resultDiv.innerHTML = '<div class="alert alert-info">Calculating optimal frequency...</div>';
+                    // ========== СТАТУС ПЭД ==========
+                    updateWellStatus(data);
+                }
+            })
+            .catch(error => console.error('Ошибка загрузки телеметрии:', error));
+    }
 
-      fetch('/api/control/optimal/?well_id={{ well.id }}')
-          .then(response => response.json())
-          .then(data => {
-              if (data.optimal_frequency) {
-                  document.getElementById('frequency').value = data.optimal_frequency;
-                  document.getElementById('freqValue').textContent = data.optimal_frequency;
-                  resultDiv.innerHTML = '<div class="alert alert-success">✓ Optimal frequency: ' +
-                      data.optimal_frequency + ' Hz</div>';
-              } else {
-                  resultDiv.innerHTML = '<div class="alert alert-warning">✗ Could not calculate</div>';
-              }
-          })
-          .catch(error => {
-              resultDiv.innerHTML = '<div class="alert alert-danger">✗ Calculation error</div>';
-          });
-  }
+    // Вспомогательная функция форматирования
+    function formatValue(value, unit) {
+        if (value === null || value === undefined || value === 'None') {
+            return '—';
+        }
+        return value + (unit ? ' ' + unit : '');
+    }
 
-  // Load on page load
-  document.addEventListener('DOMContentLoaded', loadLatestTelemetry);
+    // Функция обновления элемента
+    function updateElement(elementId, value) {
+        const el = document.getElementById(elementId);
+        if (el && value !== undefined) {
+            el.innerHTML = value;
+        }
+    }
+
+    // Функция обновления статуса ПЭД
+    function updateWellStatus(data) {
+        const statusContainer = document.getElementById('well-status-badge');
+        if (!statusContainer) return;
+
+        const isRunning = data.is_running;  // текст: 'В работе' или 'Остановлена'
+        let statusText;
+        let statusColor;
+
+        if (isRunning === 'Запущен') {
+            statusText = 'Запущен';
+            statusColor = 'success';
+        } else {
+            statusText = 'Остановлен';
+            statusColor = 'secondary';
+        }
+
+        let html = `
+        Состояние ПЭД:
+        <span class="badge bg-${statusColor} p-2 ms-1">
+            ${statusText}
+        </span>
+    `;
+
+        if (isRunning !== 'Запущен' && data.stop_reason && data.stop_reason !== '—') {
+            html += `
+            <br>
+            <small class="text-muted">
+                Причина: ${data.stop_reason}
+            </small>
+        `;
+        }
+
+        statusContainer.innerHTML = html;
+    }
+
+    // Запускаем обновление
+    document.addEventListener('DOMContentLoaded', function() {
+        refreshAllData();
+        setInterval(refreshAllData, 30000);
+    });
 </script>
 {% endblock %}

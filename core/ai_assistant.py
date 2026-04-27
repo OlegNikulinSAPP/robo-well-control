@@ -1044,126 +1044,107 @@ class RoboWellAssistant:
     # ==================== КОМБИНИРОВАННЫЕ МЕТОДЫ ====================
 
     def find_equipment_for_well(self, well_id: int) -> str:
-        """Подобрать насос и двигатель для скважины"""
-        print(f"\n🔧 Подбор оборудования для скважины ID={well_id}...")
-        try:
-            # Сначала получаем данные скважины
-            well_url = f"{API_BASE_URL}/wells/{well_id}/"
-            well_response = session.get(well_url, timeout=DEFAULT_TIMEOUT)
+            """Подобрать насос и двигатель для скважины через API (как на вкладке подбора)"""
+            print(f"\n🔧 Подбор оборудования для скважины ID={well_id} через API...")
 
-            if well_response.status_code != 200:
-                return f"❌ Скважина с ID {well_id} не найдена"
+            try:
+                # ПРЯМОЙ ВЫЗОВ API - ТОТ ЖЕ, ЧТО ИСПОЛЬЗУЕТ ВЕБ-СТРАНИЦА
+                url = f"{API_BASE_URL}/pumps/select_for_well/"
+                params = {
+                    "well_id": well_id,
+                    "service_factor": 1.15
+                }
 
-            well = well_response.json()
+                print(f"   Запрос: {url}")
+                print(f"   Параметры: {params}")
 
-            # Функция для извлечения числа из строки
-            def extract_number(value):
-                if value is None:
-                    return 0.0
+                response = session.get(url, params=params, timeout=DEFAULT_TIMEOUT)
+                print(f"   Статус ответа: {response.status_code}")
 
-                # Если это уже число
-                if isinstance(value, (int, float)):
-                    return float(value)
+                if response.status_code != 200:
+                    return f"❌ Ошибка API: {response.status_code}\n{response.text[:200]}"
 
-                value_str = str(value).strip()
-                print(f"   Raw value: '{value_str}'")
+                data = response.json()
 
-                # Берем часть до первого пробела (если есть)
-                if ' ' in value_str:
-                    value_str = value_str.split()[0]
-                    print(f"   After split: '{value_str}'")
+                well_info = data.get('well', {})
+                params_info = data.get('selection_parameters', {})
+                recommendations = data.get('recommendations', [])
+                found_count = data.get('found_count', 0)
 
-                # Заменяем запятую на точку
-                value_str = value_str.replace(',', '.')
+                # Формируем ответ
+                result = f"""
+    🔍 ПОДБОР ОБОРУДОВАНИЯ ДЛЯ СКВАЖИНЫ {well_info.get('name')} (ID={well_id}):
 
-                try:
-                    result = float(value_str)
-                    print(f"   Parsed: {result}")
-                    return result
-                except ValueError:
-                    print(f"   Failed to parse")
-                    return 0.0
+    📊 ПАРАМЕТРЫ СКВАЖИНЫ:
+       • Глубина: {well_info.get('depth', '?')} м
+       • Пластовое давление: {well_info.get('reservoir_pressure', '?')} МПа
+       • Коэффициент продуктивности: {well_info.get('productivity_index', '?')} м³/сут·МПа
+       • Обводненность: {well_info.get('water_cut', '?')}%
 
-            # Извлекаем параметры
-            depth = extract_number(well.get('depth', '0'))
-            debit = extract_number(well.get('formation_debit', '0'))
-
-            print(f"   Параметры: глубина={depth}м, дебит={debit}м³/сут")
-
-            # Расчет требуемого напора (упрощенно)
-            required_head = depth * 0.8  # 80% от глубины
-
-            result = f"""
-    🔍 ПОДБОР ОБОРУДОВАНИЯ ДЛЯ СКВАЖИНЫ {well.get('name')} (ID={well_id}):
-       Параметры скважины:
-       • Глубина: {depth:.0f} м
-       • Дебит: {debit:.1f} м³/сут
-       • Расчетный напор: {required_head:.0f} м
+    📐 РАСЧЕТНЫЕ ПАРАМЕТРЫ (по API):
+       • Целевой дебит: {params_info.get('target_flow', '?'):.1f} м³/сут
+       • Потребный напор: {params_info.get('required_head', '?'):.0f} м
+       • Газосодержание на приеме: {params_info.get('gas_fraction', '?'):.1f}%
+       • Глубина спуска насоса: {well_info.get('pump_depth', '?'):.0f} м
 
     """
-            # Ищем насосы
-            pumps_url = f"{API_BASE_URL}/pumps/find_suitable/"
-            pumps_params = {
-                "required_flow": debit,
-                "required_head": required_head,
-                "min_efficiency": 60
-            }
-            print(f"   Поиск насосов: Q={debit}, H={required_head}")
-            pumps_response = session.get(pumps_url, params=pumps_params, timeout=DEFAULT_TIMEOUT)
 
-            if pumps_response.status_code == 200:
-                pumps_data = pumps_response.json()
-                pumps = pumps_data.get('pumps', [])
+                if found_count == 0:
+                    result += """
+    ❌ ПОДХОДЯЩИЕ НАСОСЫ НЕ НАЙДЕНЫ
 
-                if pumps:
-                    best_pump = pumps[0]
-                    result += f"✅ Рекомендуемый насос: **{best_pump.get('harka_stupen')}**\n"
-                    result += f"   • Qном: {best_pump.get('nominal_range')} м³/сут\n"
-                    result += f"   • H: {best_pump.get('nominal_head_display')}\n"
-                    result += f"   • КПД в точке: {best_pump.get('calculated_efficiency', 0):.1f}%\n"
+    Возможные причины:
+       • Слишком низкий дебит для данной глубины
+       • В базе нет насосов с требуемыми параметрами
 
-                    # Получаем мощность насоса
-                    pump_power = best_pump.get('calculated_power', 0)
-                    if pump_power:
-                        result += f"   • Мощность насоса: {pump_power:.1f} кВт\n"
-
-                        # Ищем двигатель под мощность насоса
-                        motors_url = f"{API_BASE_URL}/motors/find_for_pump/"
-                        motors_params = {
-                            "pump_power": pump_power,
-                            "min_efficiency": 85
-                        }
-                        print(f"   Поиск двигателей для мощности {pump_power} кВт")
-                        motors_response = session.get(motors_url, params=motors_params, timeout=DEFAULT_TIMEOUT)
-
-                        if motors_response.status_code == 200:
-                            motors_data = motors_response.json()
-                            motors = motors_data.get('motors', [])
-
-                            if motors:
-                                best_motor = motors[0]
-                                result += f"\n✅ Рекомендуемый двигатель: **{best_motor.get('model')}**\n"
-                                result += f"   • Мощность: {best_motor.get('nominal_power')} кВт\n"
-                                result += f"   • Напряжение: {best_motor.get('nominal_voltage')} В\n"
-                                result += f"   • КПД: {best_motor.get('efficiency')}%\n"
-                            else:
-                                result += "\n❌ Подходящих двигателей не найдено\n"
-                        else:
-                            result += f"\n❌ Ошибка при поиске двигателей: {motors_response.status_code}\n"
-                    else:
-                        result += "\n❌ Не удалось определить мощность насоса\n"
+    💡 Рекомендации:
+       • Увеличьте целевой дебит скважины
+       • Рассмотрите возможность использования многоступенчатого насоса
+    """
                 else:
-                    result += "❌ Подходящих насосов не найдено\n"
-            else:
-                result += f"❌ Ошибка при поиске насосов: {pumps_response.status_code}\n"
+                    result += f"✅ НАЙДЕНО {found_count} ВАРИАНТОВ (показаны первые 5):\n\n"
 
-            return result
+                    for i, rec in enumerate(recommendations[:5], 1):
+                        pump = rec.get('pump', {})
+                        motor = rec.get('motor', {})
+                        pump_point = rec.get('pump_at_point', {})
 
-        except Exception as e:
-            print(f"   Ошибка: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            return f"❌ Ошибка: {str(e)}"
+                        pump_eff = pump_point.get('efficiency', 0)
+
+                        # Оценка эффективности
+                        if pump_eff >= 50:
+                            eff_rating = "🟢 Хорошо"
+                        elif pump_eff >= 35:
+                            eff_rating = "🟡 Удовлетворительно"
+                        else:
+                            eff_rating = "🔴 Низкая эффективность"
+
+                        result += f"{i}. **Насос: {pump.get('name', '?')}**\n"
+                        result += f"   • Рабочий диапазон: {pump.get('working_range', ['?', '?'])[0]} - {pump.get('working_range', ['?', '?'])[1]} м³/сут\n"
+                        result += f"   • В рабочей точке: Q={pump_point.get('flow', '?'):.0f} м³/сут, H={pump_point.get('head', '?'):.0f} м\n"
+                        result += f"   • КПД насоса: {pump_eff:.1f}% ({eff_rating})\n"
+                        result += f"   • Мощность на валу: {pump_point.get('power', '?'):.1f} кВт\n"
+                        result += f"   • Двигатель: {motor.get('model', '?')} ({motor.get('power', '?')} кВт)\n"
+                        if motor.get('efficiency', 0) > 0:
+                            result += f"   • КПД двигателя: {motor.get('efficiency', 0):.1f}%\n"
+                        result += f"   • Общий КПД системы: {rec.get('overall_efficiency', 0):.1f}%\n\n"
+
+                    # Добавляем рекомендации
+                    if params_info.get('required_head', 0) > 0:
+                        result += f"""
+    💡 РЕКОМЕНДАЦИИ:
+       • Текущий потребный напор: {params_info.get('required_head', 0):.0f} м
+       • Для улучшения КПД рассмотрите насос с номинальной подачей ближе к {params_info.get('target_flow', 0):.0f} м³/сут
+       • Рекомендуется проверить возможность увеличения дебита скважины
+    """
+
+                return result
+
+            except Exception as e:
+                print(f"   Ошибка: {str(e)}")
+                import traceback
+                traceback.print_exc()
+                return f"❌ Ошибка при подборе оборудования: {str(e)}"
 
     # ==================== ОСНОВНОЙ МЕТОД ====================
 

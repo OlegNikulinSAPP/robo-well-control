@@ -1,38 +1,63 @@
 {% extends "core/base.html" %}
 {% block title %}Панель управления - RoboWell{% endblock %}
 {% block content %}
-<div class="row mb-5">
-  <div class="col-lg-8">
-    <h1 class="display-4 fw-bold text-gradient mb-3">Система управления RoboWell</h1>
-    <p class="lead text-muted">Автоматическая система управления скважинами</p>
-  </div>
+
+<!-- ЗАГОЛОВОК СТРАНИЦЫ -->
+<div style="margin-left: -1.5rem; margin-right: -1.5rem; margin-top: -1rem;">
+    <div class="row mb-2" style="min-height: 250px;">
+        <div class="col-lg-12 px-0">
+            <div class="card h-100 border-0 shadow-lg text-white"
+                 style="background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)),
+                 url('/static/images/header.png'); background-size: cover; background-position: center;">
+                <div class="card-body d-flex flex-column justify-content-center">
+                    <h1 class="display-4 fw-bold mb-3">
+                        Система управления RoboWell
+                    </h1>
+                    <p class="lead">
+                        Автоматическая система управления скважинами
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
-<!-- Карточки -->
-<div class="row g-4 mb-5">
 
-    <!-- Карточка скважин -->
+<!-- Ряд для карточек статистики -->
+<div class="row g-4 mb-3">
+    <!-- Колонка для карточки скважин -->
     <div class="col-md-6 col-xl-4">
-      <div class="card h-100 border-0 shadow-lg" style="background: linear-gradient(135deg, #667eea, #764ba2)">
-        <div class="card-body text-white">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <div>
-              <h5 class="card-title fs-4">Скважины</h5>
-              <h2 class="display-5 fw-bold">{{ wells_count }}</h2>
-              <p class="card-text opacity-75 mb-0">Всего скважин в системе</p>
+        <!-- Карточка скважин -->
+        <div class="card h-100 border-0 shadow-lg text-white"
+             style="background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)),
+             url('/static/images/oil_well.png'); background-size: cover; background-position: center;">
+        <!-- Тело карточки (контейнер для содержимого) -->
+            <div class="card-body text-white">
+              <!-- Flex-контейнер для размещения заголовка и иконки в одной строке -->
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <!-- Блок с текстовой информацией карточки -->
+                <div>
+                  <h5 class="card-title fs-4">Скважины</h5>
+                  <h2 class="display-5 fw-bold">{{ wells_count }}</h2>
+                  <p class="card-text opacity-75 mb-0">Всего скважин в системе</p>
+                </div>
+                <!-- Иконка капли (Bootstrap Icons) -->
+                <i class="bi bi-droplet fs-1 opacity-50"></i>
+              </div>
+
+              <!-- Кнопка перехода к списку скважин -->
+              <a href="{% url 'well_list' %}" class="btn btn-light rounded-pill px-4 mt-3">
+                <i class="bi bi-arrow-right me-2"></i>Перейти к скважинам
+              </a>
             </div>
-            <i class="bi bi-droplet fs-1 opacity-50"></i>
-          </div>
-          <a href="{% url 'well_list' %}" class="btn btn-light rounded-pill px-4 mt-3">
-            <i class="bi bi-arrow-right me-2"></i>Перейти к скважинам
-          </a>
-        </div>
       </div>
     </div>
 
     <!-- Карточка насосов -->
     <div class="col-md-6 col-xl-4">
-      <div class="card h-100 border-0 shadow-lg" style="background: linear-gradient(135deg, #43e97b, #38f9d7)">
+        <div class="card h-100 border-0 shadow-lg text-white"
+             style="background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)),
+             url('/static/images/pumps.png'); background-size: cover; background-position: center;">
         <div class="card-body text-white">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
@@ -51,7 +76,9 @@
 
     <!-- Карточка двигателей -->
     <div class="col-md-6 col-xl-4">
-      <div class="card h-100 border-0 shadow-lg" style="background: linear-gradient(135deg, #f093fb, #f5576c)">
+        <div class="card h-100 border-0 shadow-lg text-white"
+             style="background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)),
+             url('/static/images/motor.png'); background-size: cover; background-position: center;">
         <div class="card-body text-white">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
@@ -70,38 +97,42 @@
 
 </div>
 
+<!-- СЕКЦИЯ: БЫСТРЫЕ ДЕЙСТВИЯ И ИНФОРМАЦИЯ О СИСТЕМЕ -->
 <!-- Ряд для секции быстрых действий и информации о системе -->
 <div class="row g-4">
   <!-- Колонка для быстрых действий -->
   <div class="col-lg-{% if user.is_staff or user.is_superuser %}6{% else %}12{% endif %}">
     <!-- Карточка для быстрых действий -->
-    <div class="card h-100 shadow-sm border-0">
+      <div class="card card-dark h-100 shadow-sm border-0">
       <!-- Заголовок карточки для быстрых действий -->
-      <div class="card-header bg-white border-0 pt-4">
-        <h5 class="mb-0"><i class="bi bi-lightning-charge-fill me-2 text-primary"></i>Быстрые действия</h5>
-      </div>
-      <!-- Тело карточки -->
-      <div class="card-body">
-        <div class="d-grid gap-3">
-          <a href="{% url 'equipment_select' %}" class="btn btn-outline-primary btn-lg text-start rounded-pill">
-            <i class="bi bi-search me-2"></i>Подобрать оборудование
-          </a>
-          <a href="#" class="btn btn-outline-success btn-lg text-start rounded-pill">
-            <i class="bi bi-graph-up-arrow me-2"></i>Анализ эффективности
-          </a>
-          <a href="#" class="btn btn-outline-warning btn-lg text-start rounded-pill">
-            <i class="bi bi-graph-up-arrow me-2"></i>Просмотр уведомлений
-          </a>
-        </div>
-      </div>
+          <div class="card-header bg-white border-0 pt-4">
+            <h5 class="mb-0"><i class="bi bi-lightning-charge-fill me-2 text-primary"></i>Быстрые действия</h5>
+          </div>
+          <!-- Тело карточки -->
+          <div class="card-body">
+            <div class="d-grid gap-3">
+              <a href="{% url 'equipment_select' %}" class="btn btn-outline-primary btn-lg text-start rounded-pill">
+                <i class="bi bi-search me-2"></i>Подобрать оборудование
+              </a>
+              <a href="#" class="btn btn-outline-success btn-lg text-start rounded-pill">
+                <i class="bi bi-graph-up-arrow me-2"></i>Анализ эффективности
+              </a>
+              <a href="#" class="btn btn-outline-warning btn-lg text-start rounded-pill">
+                <i class="bi bi-graph-up-arrow me-2"></i>Просмотр уведомлений
+              </a>
+            </div>
+          </div>
     </div>
   </div>
 
+    <!--
+        Правая колонка с информацией о системе
+    -->
   {% if user.is_staff or user.is_superuser %}
   <!-- Колонка для информации о системе -->
   <div class="col-lg-6">
     <!-- Карточка для информации о системе -->
-    <div class="card h-100 shadow-sm border-0">
+      <div class="card card-dark h-100 shadow-sm border-0">
       <!-- Заголовок карточки для информации о системе -->
       <div class="card-header bg-white border-0 pt-4">
         <h5 class='mb-0'><i class="bi bi-info-circle-fill me-2 text-primary"></i>Информация о системе</h5>
@@ -129,24 +160,29 @@
 
 <!-- Ряд для блока последних команд -->
 <div class="row mt-4">
-  <!-- Колонка для блока последних команд -->
-  <div class="col-12">
-    <!-- Карточка для последних команд -->
-    <div class="card shadow-sm border-0">
-      <div class="card-header bg-white border-0 pt-4">
-        <h5 class="mb-0"><i class="bi bi-history me-2 text-primary"></i>Последние команды</h5>
-      </div>
-      <div class="card-body">
-        <div id="recent-commands">Загрузка...</div>
-      </div>
+    <div class="col-12">
+        <div class="card card-dark shadow-sm border-0">
+            <div class="card-header bg-white border-0 pt-4">
+                <h5 class="mb-0"><i class="bi bi-history me-2 text-primary"></i>Последние команды</h5>
+            </div>
+            <div class="card-body">
+                <div id="recent-commands">
+                    <div class="text-center py-3">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Загрузка...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Загрузка команд...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
 
 <!-- Ряд для блока чата с ИИ-ассистентом -->
 <div class="row mt-5">
   <div class="col-12">
-    <div class="card shadow-sm border-0">
+      <div class="card card-dark shadow-sm border-0">
       <div class="card-header bg-dark text-white border-0">
         <div class="mb-0"><i class="bi bi-robot me-2"></i>ИИ-ассистент RoboWell</div>
       </div>
@@ -163,98 +199,340 @@
   </div>
 </div>
 {% endblock %}
+
 {% block extra_js %}
 <script>
-  // Функция для обновления информации о системе
-  function updateSystemInfo() {
-    // Получаем временную метку последней телеметрии
-    fetch("/api/telemetry/?ordering=-timestamp&page_size=1")
-      .then(response => response.json())
-      .then(data => {
-        if (data.results && data.results.length > 0) {
-          const timestamp = new Date(data.results[0].timestamp);
-          document.getElementById("last-telemetry-time").textContent = timestamp.toLocaleString("ru-RU");
-        } else {
-          document.getElementById("last-telemetry-time").textContent = "Нет данных";
+    // ==================== ТИПЫ ====================
+    /**
+     * Объект с данными о выполненной команде
+     * @typedef {Object} CommandLog
+     * @property {number} id - ID команды
+     * @property {string} well_name - Название скважины
+     * @property {string} command_type - Тип команды (start, stop, frequency_adjust, emergency_stop)
+     * @property {string} status - Статус (success, error, sent)
+     * @property {string} created_at - Дата создания в ISO формате
+     * @property {Object} parameters - Параметры команды
+     * @property {string} created_by - Кто создал
+     */
+
+  // Функция для получения CSRF токена
+  function getCSRFToken() {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(";");
+      for (const cookie of cookies) {
+        const cleanCookie = cookie.trim();
+        if (cleanCookie.substring(0, "csrftoken".length + 1) === "csrftoken=") {
+          cookieValue = decodeURIComponent(cleanCookie.substring("csrftoken".length + 1));
+        break;
         }
-      });
+      }
+    }
+    return cookieValue;
+  }
+
+  /**
+   * Обновляет отображение времени последней телеметрии на странице
+   *
+   * @param {string|Date} timestamp - Временная метка в формате ISO строки или объект Date
+   * @returns {void} Функция ничего не возвращает, только обновляет DOM
+   *
+   * @example
+   * // Передаём строку с сервера
+   * updateTelemetryTime("2026-03-19T15:30:00");
+   *
+   * @example
+   * // Передаём уже созданный объект Date
+   * const date = new Date("2026-03-19T15:30:00");
+   * updateTelemetryTime(date);
+   */
+  function updateTelemetryTime(timestamp) {
+    document.getElementById("last-telemetry-time").textContent =
+            new Date(timestamp).toLocaleString("ru-RU");
+  }
+
+  /**
+   * Обновляет информацию о системе на главной странице
+   *
+   * Функция выполняет три параллельных запроса к API:
+   * 1. Получает последние данные телеметрии со всех скважин
+   * 2. Получает количество непрочитанных уведомлений
+   * 3. Получает историю последних команд
+   *
+   * После получения данных обновляет соответствующие элементы на странице:
+   * - Время последней телеметрии (span#last-telemetry-time)
+   * - Счётчик уведомлений (span#active-alerts-count)
+   * - Таблицу последних команд (div#recent-commands)
+   *
+   * Функция вызывается автоматически при загрузке страницы
+   * и затем каждые 30 секунд по таймеру.
+   *
+   * @async
+   * @returns {Promise<void>} Промис, который завершается после всех запросов
+   *
+   * @example
+   * // Вызвать принудительное обновление
+   * updateSystemInfo();
+   *
+   * @example
+   * // Запустить автообновление
+   * setInterval(updateSystemInfo, 30000);
+   *
+   * @throws {Error} Ловит все ошибки запросов и обрабатывает их,
+   *                 показывая пользователю соответствующие сообщения
+   */
+  function updateSystemInfo() {
+    console.log("Обновление информации о системе...");
+    // Получаем временную метку последней телеметрии
+    fetch("/api/telemetry/latest/")
+            .then((response) => {
+              if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+              }
+              return response.json();
+            })
+            .then((data) => {
+              console.log("Данные телеметрии:", data);
+              if (data && data.length > 0) {
+                updateTelemetryTime(data[0].timestamp);
+              } else if (data && data.timestamp) {
+                updateTelemetryTime(data.timestamp);
+              } else {
+                document.getElementById("last-telemetry-time").textContent = "Нет данных";
+              }
+            })
+            .catch((error) => {
+              console.error("Ошибка загрузки телеметрии:", error);
+              document.getElementById("last-telemetry-time").textContent = "Ошибка загрузки";
+            })
 
     // Получаем количество непрочитанных уведомлений
     fetch("/api/alerts/unread_count/")
-      .then(response => response.json())
-      .then(data => {
-        document.getElementById("active-alerts-count").textContent = data.count;
-        if (data.count > 0) {
-          document.getElementById("active-alerts-count").className = "badge bg-danger";
-        } else {
-          document.getElementById("active-alerts-count").className = "badge bg-success";
-        }
-      });
+            .then((response) => {
+              if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+              }
+              return response.json();
+            })
+            .then((data) => {
+              console.log("Уведомления:", data);
+              const count = data?.count || 0;
+              document.getElementById("active-alerts-count").textContent = count.toString();
+              if (count > 0) {
+                document.getElementById("active-alerts-count").className = "badge bg-danger";
+              } else {
+                document.getElementById("active-alerts-count").className = "badge bg-success";
+              }
+            })
+            .catch((error) => {
+              console.error("Ошибка загрузки уведомлений:", error);
+              document.getElementById("active-alerts-count").textContent = "0";
+              document.getElementById("active-alerts-count").className = "badge bg-secondary";
+            })
 
-    // Получаем последние команды
-    fetch("/api/command-logs/?ordering=-created_at&page_size=5")
-      .then((response) => response.json())
-      .then((data) => {
-        let html = '<table class="table table-sm">';
-        html += "<tr><th>Время</th><th>Скважина</th><th>Команда</th><th>Статус</th></tr>";
+      // Получаем последние команды
+      fetch("/api/command-logs/?ordering=-created_at&page_size=5")
+          .then((response) => {
+              if (!response.ok) {
+                  throw new Error(`HTTP error! status: ${response.status}`);
+              }
+              return response.json();
+          })
+          .then((data) => {
+              console.log("Команды:", data);
 
-        if (data.results && data.results.length > 0) {
-          data.results.forEach((cmd) => {
-            const time = new Date(cmd.created_at).toLocaleString("ru-RU");
+              // Создаем полноценную Bootstrap таблицу
+              let html = `
+        <div class="table-responsive">
+            <table class="table table-hover table-striped mb-0">
+                <thead class="bg-dark text-white">
+                    <tr>
+                        <th style="width: 25%"><i class="bi bi-clock me-1"></i>Время</th>
+                        <th style="width: 30%"><i class="bi bi-water me-1"></i>Скважина</th>
+                        <th style="width: 25%"><i class="bi bi-terminal me-1"></i>Команда</th>
+                        <th style="width: 20%"><i class="bi bi-check-circle me-1"></i>Статус</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
 
-            // Определяем класс статуса (цвет бейджа)
-            let statusClass = "warning";
-            if (cmd.status === "success") {
-              statusClass = "success";
-            } else if (cmd.status === "error") {
-              statusClass = "danger";
-            }
+              /** @type {CommandLog[]} */
+              const logs = data?.results || [];
 
-            // Определяем текст статуса
-            let statusText;
-            if (cmd.status === "success") {
-              statusText = "Успешно";
-            } else if (cmd.status === "error") {
-              statusText = "Ошибка";
-            } else {
-              statusText = "Отправлено";
-            }
+              if (logs.length > 0) {
+                  logs.forEach((cmd) => {
+                      const time = new Date(cmd.created_at).toLocaleString("ru-RU");
 
-            // Определяем текст команды
-            let commandText;
-            if (cmd.command_type === "frequency_adjust") {
-              commandText = "Изменение частоты";
-            } else if (cmd.command_type === "start") {
-              commandText = "Запуск";
-            } else if (cmd.command_type === "stop") {
-              commandText = "Остановка";
-            } else if (cmd.command_type === "emergency_stop") {
-              commandText = "Аварийная остановка";
-            } else {
-              commandText = cmd.command_type;
-            }
+                      // Определяем класс и текст статуса
+                      let statusClass, statusText, statusIcon;
+                      if (cmd.status === "success") {
+                          statusClass = "success";
+                          statusText = "Успешно";
+                          statusIcon = "bi-check-circle-fill";
+                      } else if (cmd.status === "error") {
+                          statusClass = "danger";
+                          statusText = "Ошибка";
+                          statusIcon = "bi-x-circle-fill";
+                      } else {
+                          statusClass = "warning";
+                          statusText = "Отправлено";
+                          statusIcon = "bi-clock-history";
+                      }
 
-            html += `<tr>
-                        <td>${time}</td>
-                        <td>${cmd.well_name || "Неизвестно"}</td>
-                        <td>${commandText}</td>
-                        <td><span class="badge bg-${statusClass}">${statusText}</span></td>
-                    </tr>`;
+                      // Определяем текст команды и иконку
+                      let commandText, commandIcon;
+                      if (cmd.command_type === "frequency_adjust") {
+                          commandText = "Изменение частоты";
+                          commandIcon = "bi-sliders2";
+                      } else if (cmd.command_type === "start") {
+                          commandText = "Запуск";
+                          commandIcon = "bi-play-fill";
+                      } else if (cmd.command_type === "stop") {
+                          commandText = "Остановка";
+                          commandIcon = "bi-stop-fill";
+                      } else if (cmd.command_type === "emergency_stop") {
+                          commandText = "Аварийная остановка";
+                          commandIcon = "bi-exclamation-triangle-fill";
+                      } else {
+                          commandText = cmd.command_type;
+                          commandIcon = "bi-question-circle";
+                      }
+
+                      html += `
+                    <tr>
+                        <td><i class="bi bi-calendar3 me-1 text-muted"></i>${time}</td>
+                        <td><i class="bi bi-droplet me-1 text-primary"></i>${escapeHtml(cmd.well_name || "Неизвестно")}</td>
+                        <td><i class="${commandIcon} me-1 text-info"></i>${commandText}</td>
+                        <td><span class="badge bg-${statusClass}"><i class="${statusIcon} me-1"></i>${statusText}</span></td>
+                    </tr>
+                `;
+                  });
+              } else {
+                  html += `
+                <tr>
+                    <td colspan="4" class="text-center text-muted py-4">
+                        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                        Нет выполненных команд
+                    </td>
+                </tr>
+            `;
+              }
+
+              html += `
+                </tbody>
+            </table>
+        </div>
+        `;
+
+              document.getElementById("recent-commands").innerHTML = html;
+          })
+          .catch((error) => {
+              console.error("Ошибка загрузки команд:", error);
+              document.getElementById("recent-commands").innerHTML = `
+            <div class="alert alert-danger mb-0">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                Ошибка загрузки команд: ${escapeHtml(error.message)}
+            </div>
+        `;
           });
-        } else {
-          html += '<tr><td colspan="4" class="text-center">Нет команд</td></tr>';
-        }
-        html += "</table>";
-        document.getElementById("recent-commands").innerHTML = html;
-      });
   }
 
-  // Вызываем функцию после загрузки DOM
-  document.addEventListener("DOMContentLoaded", function() {
-    updateSystemInfo();
-  });
+    // Функция для отправки сообщения в чат
+    function sendChatMessage() {
+        const chatInput = document.getElementById("chat-input");
+        const chatMessages = document.getElementById("chat-messages");
+        const message = chatInput.value.trim();
 
-  // И обновляем каждые 30 секунд
-  setInterval(updateSystemInfo, 30000);
+        if (!message) return;
+
+        // Добавляем сообщение пользователя
+        chatMessages.innerHTML += `
+        <div class="text-end mb-2">
+            <div class="bg-primary text-white d-inline-block p-2 rounded">${escapeHtml(message)}</div>
+        </div>
+    `;
+
+        chatInput.value = "";
+
+        // Плавная прокрутка ВНУТРИ чата
+        chatMessages.scrollTo({
+            top: chatMessages.scrollHeight,
+            behavior: 'smooth'
+        });
+
+        // Отправляем на сервер
+        fetch("/api/chat/", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCSRFToken(),
+            },
+            body: JSON.stringify({ question: message }),
+        })
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then((data) => {
+                chatMessages.innerHTML += `
+            <div class="text-start mb-2">
+                <div class="bg-secondary text-white d-inline-block p-2 rounded">${escapeHtml(data.answer)}</div>
+            </div>
+        `;
+
+                // Снова прокручиваем ВНУТРИ чата
+                chatMessages.scrollTo({
+                    top: chatMessages.scrollHeight,
+                    behavior: 'smooth'
+                });
+            })
+            .catch((error) => {
+                chatMessages.innerHTML += `
+            <div class="text-start mb-2">
+                <div class="bg-danger text-white d-inline-block p-2 rounded">Ошибка: ${escapeHtml(error.message)}</div>
+            </div>
+        `;
+
+                // И здесь тоже
+                chatMessages.scrollTo({
+                    top: chatMessages.scrollHeight,
+                    behavior: 'smooth'
+                });
+            });
+    }
+
+    // Функция для экранирования HTML
+    function escapeHtml(unsafe) {
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    // Вызываем функцию после загрузки DOM
+    document.addEventListener("DOMContentLoaded", function () {
+        console.log("DOM загружен, запускаем updateSystemInfo");
+        updateSystemInfo();
+
+        const sendBtn = document.getElementById('send-btn');
+        const chatInput = document.getElementById("chat-input");
+
+        if (sendBtn) {
+            sendBtn.addEventListener("click", sendChatMessage);
+        }
+        if (chatInput) {
+            chatInput.addEventListener("keypress", function (e) {
+                if (e.key === "Enter") {
+                    sendChatMessage();
+                }
+            });
+        }
+    });
+
+    setInterval(updateSystemInfo, 30000);
 </script>
 {% endblock %}
