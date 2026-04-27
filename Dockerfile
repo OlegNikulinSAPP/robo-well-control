@@ -4,6 +4,7 @@ WORKDIR /app
 
 COPY requirements.txt .
 RUN pip install -r requirements.txt
+RUN pip install setuptools==75.8.0  # ← Явная установка
 
 COPY . .
 RUN mkdir -p /app/static
