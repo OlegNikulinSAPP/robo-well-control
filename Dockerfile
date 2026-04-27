@@ -11,10 +11,10 @@ COPY . .
 RUN find . -name "swagger.py" -type f -delete
 RUN pip install --upgrade requests
 
-# Создаём папки
+# Создаём папку для статики
 RUN mkdir -p /app/static
 
-# Выполняем миграции
+# ВЫПОЛНЯЕМ МИГРАЦИИ (ЭТО САМОЕ ГЛАВНОЕ!)
 RUN python manage.py makemigrations
 RUN python manage.py migrate
 
