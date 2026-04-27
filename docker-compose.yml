@@ -4,6 +4,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - SECRET_KEY=django-insecure-temp-key
+      - SECRET_KEY=django-insecure-temp-key-12345
       - DEBUG=True
       - ALLOWED_HOSTS=*
+    # command не указываем — берём из Dockerfile
