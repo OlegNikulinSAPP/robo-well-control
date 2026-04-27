@@ -4,9 +4,12 @@ WORKDIR /app
 
 COPY requirements.txt .
 RUN pip install -r requirements.txt
-RUN pip install setuptools==75.8.0  # ← Явная установка
 
 COPY . .
+
+# Удаляем swagger.py, если он остался в кэше
+RUN rm -f config/swagger.py
+
 RUN mkdir -p /app/static
 
 EXPOSE 8000
