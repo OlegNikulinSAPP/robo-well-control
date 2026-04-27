@@ -7,7 +7,8 @@ RUN pip install -r requirements.txt
 
 COPY . .
 
-# Создаём временную папку для статики
+# Создаём директорию для статики (как в ваших логах)
 RUN mkdir -p /app/static
 
+# Команда запуска (теперь здесь!)
 CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]
