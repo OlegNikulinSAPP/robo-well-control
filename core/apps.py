@@ -10,9 +10,11 @@ class CoreConfig(AppConfig):
 
     def ready(self):
         """Запуск планировщика при старте Django."""
-        try:
-            from .scheduler import scheduler
-            scheduler.start()
-            logger.info("Планировщик автоматически запущен при старте Django")
-        except Exception as e:
-            logger.error(f"Ошибка запуска планировщика: {e}")
+        # Временно отключаем для отладки
+        # try:
+        #     from .scheduler import scheduler
+        #     scheduler.start()
+        #     logger.info("Планировщик автоматически запущен при старте Django")
+        # except Exception as e:
+        #     logger.error(f"Ошибка запуска планировщика: {e}")
+        pass
