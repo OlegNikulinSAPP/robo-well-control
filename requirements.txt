@@ -1,12 +1,10 @@
-Django>=5.2
-gunicorn==21.2.0
-whitenoise==6.6.0   # для статических файлов
-psycopg2-binary==2.9.9  # если используете PostgreSQL
-djangorestframework==3.16.1
+Django==4.2.11
 django-filter==23.5
+djangorestframework==3.16.1
 drf-yasg==1.21.7
 django-celery-results==2.5.1
 celery==5.6.2
+gunicorn==21.2.0
 openpyxl==3.1.5
 openai==2.21.0
 pandas==2.2.2
