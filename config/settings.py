@@ -159,3 +159,10 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 }
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://olegnikulinsapp-robo-well-control-f74a.twc1.net',
+    'http://olegnikulinsapp-robo-well-control-f74a.twc1.net',
+    'https://olegnikulinapp-robo-well-control-b926.twc1.net',
+    'http://olegnikulinapp-robo-well-control-b926.twc1.net',
+]
