@@ -26,8 +26,17 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dev-key-please-change
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
+# ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
+# Разрешенные хосты
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    '188.225.9.253',
+    'olegnikulinsapp-robo-well-control-f74a.twc1.net',
+    'olegnikulinapp-robo-well-control-b926.twc1.net',
+    '.twc1.net',
+]
 
 # Application definition
 
@@ -160,7 +169,7 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,
 }
 
-# CSRF и безопасность
+# CSRF доверенные источники
 CSRF_TRUSTED_ORIGINS = [
     'https://olegnikulinsapp-robo-well-control-f74a.twc1.net',
     'http://olegnikulinsapp-robo-well-control-f74a.twc1.net',
@@ -168,11 +177,12 @@ CSRF_TRUSTED_ORIGINS = [
     'http://olegnikulinapp-robo-well-control-b926.twc1.net',
 ]
 
-CSRF_COOKIE_DOMAIN = '.twc1.net'
-CSRF_COOKIE_SECURE = True
-CSRF_USE_SESSIONS = False
-
-SESSION_COOKIE_SECURE = True
-SESSION_COOKIE_DOMAIN = '.twc1.net'
-
+# Для работы за прокси (HTTPS)
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Куки
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_DOMAIN = '.twc1.net'
+SESSION_COOKIE_DOMAIN = '.twc1.net'
+CSRF_USE_SESSIONS = False
