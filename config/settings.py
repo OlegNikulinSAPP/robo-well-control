@@ -160,9 +160,19 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,
 }
 
+# CSRF и безопасность
 CSRF_TRUSTED_ORIGINS = [
     'https://olegnikulinsapp-robo-well-control-f74a.twc1.net',
     'http://olegnikulinsapp-robo-well-control-f74a.twc1.net',
     'https://olegnikulinapp-robo-well-control-b926.twc1.net',
     'http://olegnikulinapp-robo-well-control-b926.twc1.net',
 ]
+
+CSRF_COOKIE_DOMAIN = '.twc1.net'
+CSRF_COOKIE_SECURE = True
+CSRF_USE_SESSIONS = False
+
+SESSION_COOKIE_SECURE = True
+SESSION_COOKIE_DOMAIN = '.twc1.net'
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
