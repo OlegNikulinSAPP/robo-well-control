@@ -28,14 +28,16 @@ DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 # ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
-# Разрешенные хосты
+CSRF_TRUSTED_ORIGINS = [
+    'https://olegnikulinsapp-robo-well-control-f74a.twc1.net',
+    'http://olegnikulinsapp-robo-well-control-f74a.twc1.net',
+]
+
 ALLOWED_HOSTS = [
+    'olegnikulinsapp-robo-well-control-f74a.twc1.net',
+    '188.225.9.253',
     'localhost',
     '127.0.0.1',
-    '188.225.9.253',
-    'olegnikulinsapp-robo-well-control-f74a.twc1.net',
-    'olegnikulinapp-robo-well-control-b926.twc1.net',
-    '.twc1.net',
 ]
 
 # Application definition
