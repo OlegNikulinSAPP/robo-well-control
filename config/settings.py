@@ -17,10 +17,15 @@ import os
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# ===== БЕЗОПАСНОСТЬ И ДОСТУПЫ =====
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dev-key-please-change-in-production')
-
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+# ============================================================
+# ===== ПРИНУДИТЕЛЬНЫЕ НАСТРОЙКИ ДЛЯ CSRF И ДОМЕНОВ =====
+# ============================================================
+CSRF_TRUSTED_ORIGINS = [
+    'https://olegnikulinsapp-robo-well-control-f74a.twc1.net',
+    'http://olegnikulinsapp-robo-well-control-f74a.twc1.net',
+    'https://olegnikulinapp-robo-well-control-b926.twc1.net',
+    'http://olegnikulinapp-robo-well-control-b926.twc1.net',
+]
 
 ALLOWED_HOSTS = [
     'olegnikulinsapp-robo-well-control-f74a.twc1.net',
@@ -31,21 +36,19 @@ ALLOWED_HOSTS = [
     '.twc1.net',
 ]
 
-# ===== ПРИНУДИТЕЛЬНОЕ РЕШЕНИЕ ДЛЯ CSRF И ORIGIN CHECKING =====
-CSRF_TRUSTED_ORIGINS = [
-    'https://olegnikulinsapp-robo-well-control-f74a.twc1.net',
-    'http://olegnikulinsapp-robo-well-control-f74a.twc1.net',
-    'https://olegnikulinapp-robo-well-control-b926.twc1.net',
-    'http://olegnikulinapp-robo-well-control-b926.twc1.net',
-]
-
-# ВРЕМЕННО: отключаем защиту для диагностики (убрать после входа!)
+# ВРЕМЕННО: отключаем защиту для диагностики
 CSRF_COOKIE_SECURE = False
 SESSION_COOKIE_SECURE = False
 SECURE_PROXY_SSL_HEADER = None
 CSRF_USE_SESSIONS = False
 CSRF_COOKIE_DOMAIN = '.twc1.net'
 SESSION_COOKIE_DOMAIN = '.twc1.net'
+# ============================================================
+
+
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dev-key-please-change-in-production')
+
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 
 # Application definition
@@ -149,6 +152,9 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+    ],
 }
 
 
