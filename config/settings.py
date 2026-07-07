@@ -21,16 +21,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 import os
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dev-key-please-change-in-production')
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
-
-# ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
-
+# ===== ПРИНУДИТЕЛЬНЫЕ НАСТРОЙКИ (НЕ УДАЛЯТЬ!) =====
 CSRF_TRUSTED_ORIGINS = [
     'https://olegnikulinsapp-robo-well-control-f74a.twc1.net',
     'http://olegnikulinsapp-robo-well-control-f74a.twc1.net',
+    'https://olegnikulinapp-robo-well-control-b926.twc1.net',
+    'http://olegnikulinapp-robo-well-control-b926.twc1.net',
 ]
 
 ALLOWED_HOSTS = [
@@ -39,6 +36,17 @@ ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
 ]
+
+# Отключаем проверку CSRF для админки (временно!)
+CSRF_FAILURE_VIEW = 'django.views.csrf.csrf_failure'
+# ===== КОНЕЦ ПРИНУДИТЕЛЬНЫХ НАСТРОЕК =====
+
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dev-key-please-change-in-production')
+
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+
+# ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
 # Application definition
 
@@ -170,14 +178,6 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 }
-
-# CSRF доверенные источники
-CSRF_TRUSTED_ORIGINS = [
-    'https://olegnikulinsapp-robo-well-control-f74a.twc1.net',
-    'http://olegnikulinsapp-robo-well-control-f74a.twc1.net',
-    'https://olegnikulinapp-robo-well-control-b926.twc1.net',
-    'http://olegnikulinapp-robo-well-control-b926.twc1.net',
-]
 
 # Для работы за прокси (HTTPS)
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
