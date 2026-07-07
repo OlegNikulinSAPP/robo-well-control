@@ -178,3 +178,8 @@ SPECTACULAR_SETTINGS = {
 }
 
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# Принудительное включение WhiteNoise
+if not DEBUG:
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+    MIDDLEWARE.insert(0, 'whitenoise.middleware.WhiteNoiseMiddleware')
