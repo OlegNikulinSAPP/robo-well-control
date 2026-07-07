@@ -180,3 +180,17 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 }
+
+# ===== ПОСЛЕДНЯЯ СТРОКА В ФАЙЛЕ =====
+# Принудительная установка CSRF и ALLOWED_HOSTS
+CSRF_TRUSTED_ORIGINS = [
+    'https://olegnikulinsapp-robo-well-control-f74a.twc1.net',
+    'http://olegnikulinsapp-robo-well-control-f74a.twc1.net',
+]
+ALLOWED_HOSTS = [
+    'olegnikulinsapp-robo-well-control-f74a.twc1.net',
+    '188.225.9.253',
+    'localhost',
+    '127.0.0.1',
+]
+# ===== КОНЕЦ ФАЙЛА =====
