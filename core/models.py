@@ -146,7 +146,7 @@ class Well(models.Model):
         blank=True
     )
     pump_depth = models.FloatField(
-        verbose_name='Глубина спуска насоса',
+        verbose_name='Глубина спуска насоса',  # noqa
         help_text='Глубина установки насоса, м. Если не указана - рассчитывается автоматически',
         null=True,
         blank=True
@@ -166,7 +166,7 @@ class Well(models.Model):
 
     @property
     def has_telemetry(self):
-        return self.telemetry.exists()
+        return self.telemetry.exists()  # noqa
 
     # ==== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ДЛЯ РАСЧЕТОВ ====
     def _get_nkt_inner_diameter(self):
@@ -175,19 +175,15 @@ class Well(models.Model):
         inner_diameter_mm = self.nkt_diameter - 2 * self.nkt_wall_thickness  # noqa
         return inner_diameter_mm / 1000
 
-    def _get_casing_inner_diameter_m(self):
-        """Внутренний диаметр эксплуатационной колонны, м"""
-        return self.casing_inner_diameter / 1000  # noqa
-
     def _get_annular_area(self):
         """Площадь межтрубного пространства, м². S = π/4 × (D² - d²)"""
-        casing_d = self._get_casing_inner_diameter_m()
+        casing_d = self.casing_inner_diameter / 1000  # noqa
         nkt_d = self.nkt_diameter / 1000  # noqa
         return (math.pi / 2) * (casing_d ** 2 - nkt_d ** 2)  # площадь кольца
 
     def _get_annular_area_for_motor(self, motor_diameter_m):
         """Площадь сечения вокруг ПЭД заданного диаметра, м²"""
-        casing_d = self._get_casing_inner_diameter_m()
+        casing_d = self.casing_inner_diameter / 1000  # noqa
         return (math.pi / 4) * (casing_d ** 2 - motor_diameter_m ** 2)
 
     def _get_p_zab(self, target_flow):
@@ -200,12 +196,12 @@ class Well(models.Model):
         """
         # Если есть все данные для расчета по притоку
         if self.productivity_index and self.reservoir_pressure:
-            print('1', self.reservoir_pressure - target_flow / self.productivity_index)
+            print('1', self.reservoir_pressure - target_flow / self.productivity_index)  # noqa
             return self.reservoir_pressure - target_flow / self.productivity_index  # noqa
 
         # Если есть только пластовое давление
         if self.reservoir_pressure:
-            print('2', self.reservoir_pressure * DEFAULT_PRESSURE_FRACTION)
+            print('2', self.reservoir_pressure * DEFAULT_PRESSURE_FRACTION)  # noqa
             return self.reservoir_pressure * DEFAULT_PRESSURE_FRACTION  # noqa
         print('3', MIN_BOTTOM_HOLE_PRESSURE)
         # Если нет данных, возвращаем минимум
@@ -244,9 +240,18 @@ class Well(models.Model):
         p_zab_mpa = self._get_p_zab(target_flow)
         p_zab_pa = p_zab_mpa * MPA_TO_PA
 
-        pressure_head = p_zab_pa / (props['density'] * GRAVITY)
+        print(f"\n🔍 ДИАГНОСТИКА для скважины {self.name}:")
+        print(f"   target_flow = {target_flow} м³/сут")
+        print(f"   p_zab_mpa = {p_zab_mpa:.2f} МПа")
+        print(f"   props['density'] = {props['density']:.1f} кг/м³")
+        print(f"   pressure_head = {p_zab_pa / (props['density'] * GRAVITY):.1f} м")
+        print(f"   self.depth = {self.depth:.1f} м")
 
-        return self.depth - pressure_head  # noqa
+        pressure_head = p_zab_pa / (props['density'] * GRAVITY)
+        result = self.depth - pressure_head  # noqa
+        print(f"   РЕЗУЛЬТАТ = {result:.1f} м\n")
+
+        return result
 
     def _get_reynolds_number(self, target_flow):
         """
@@ -372,6 +377,7 @@ class Well(models.Model):
             return 0.75 * self.bubble_point_pressure  # noqa
         return MIN_INTAKE_PRESSURE
 
+
     @with_defaults
     def get_fluid_properties_at_intake(self, target_flow, intake_pressure, **kwargs):
         """
@@ -431,7 +437,7 @@ class Well(models.Model):
             return self.pump_depth
 
         # Свойства жидкости на приеме
-        props = self.get_fluid_properties_at_intake(target_flow, intake_pressure)
+        props = self.get_fluid_properties_at_intake(target_flow, intake_pressure)  # noqa
         print('props', props)
 
         # Динамический уровень
@@ -490,21 +496,23 @@ class Well(models.Model):
         Расчет статического уровня жидкости в скважине
         """
         # Пластовое давление в Паскалях
-        p_res_pa = self.reservoir_pressure * 1e6
+        p_res_pa = self.reservoir_pressure * 1e6  # noqa
 
         # Буферное давление в Паскалях
-        p_buf_pa = self.buffer_pressure * 1e6
+        p_buf_pa = self.buffer_pressure * 1e6  # noqa
 
         # Плотность смеси
         density = self.get_mixture_density()
 
         g = 9.81
 
+        print(f"DEBUG: P_res={self.reservoir_pressure}, Depth={self.depth} p={self.get_mixture_density()}")
+
         # Высота столба жидкости от забоя до уровня
         liquid_column = (p_res_pa - p_buf_pa) / (density * g)
 
         # Статический уровень = глубина скважины - высота столба
-        static_level = self.depth - liquid_column
+        static_level = self.depth - liquid_column  # noqa
 
         return static_level
 
@@ -517,7 +525,7 @@ class Well(models.Model):
         """
         # Если давление не передано, берем из последней телеметрии
         if intake_pressure_mpa is None:
-            last_telemetry = self.telemetry.order_by('-timestamp').first()
+            last_telemetry = self.telemetry.order_by('-timestamp').first()  # noqa
             if last_telemetry and last_telemetry.intake_pressure:
                 intake_pressure_mpa = last_telemetry.intake_pressure / 9.87  # атм → МПа
                 print('Давление на приеме из телеметрии', intake_pressure_mpa)
@@ -689,7 +697,7 @@ class Well(models.Model):
             'pressure_margin': round(pressure_margin, 2) if pressure_margin is not None else None,
             'pressure_status': "выше мин." if pressure_margin and pressure_margin > 0 else "НИЖЕ МИН.!",
             'pressure_color': "success" if pressure_margin and pressure_margin > 1 else
-            "warning" if pressure_margin and pressure_margin > 0 else "danger",
+            "warning" if pressure_margin and pressure_margin > 0 else "danger",  # noqa
 
             'gas_fraction': round(props['gas_fraction'] * 100, 1) if props['gas_fraction'] is not None else None,
             'gas_fraction_limit': 25.0,
@@ -856,6 +864,27 @@ class Well(models.Model):
 
         return recommendations
 
+    def clean(self):
+        """Валидация физических параметров скважины"""
+        from django.core.exceptions import ValidationError
+
+        # Проверка: пластовое давление не должно превышать гидростатическое
+        if self.depth and self.reservoir_pressure:
+            # Градиент давления: 0.01 МПа/м для воды
+            max_pressure = self.depth * 0.01 * 1.2  # 20% запас для воды  # noqa
+            if self.reservoir_pressure > max_pressure:  # noqa
+                raise ValidationError({
+                    'reservoir_pressure': f'Пластовое давление {self.reservoir_pressure} МПа'
+                                          f'превышает максимально допустимое {max_pressure:.1f} Мпа'
+                                          f'для глубины {self.depth} м'
+                })
+
+    def save(self, *args, **kwargs):
+        """Переопределение save для вызова валидации"""
+        # Вызываем валидацию перед сохранением
+        self.full_clean()
+        # Вызываем оригинальный метод save
+        super().save(*args, **kwargs)
 
 class PumpCharacteristic(models.Model):
     """

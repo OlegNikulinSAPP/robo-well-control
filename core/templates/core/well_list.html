@@ -125,7 +125,7 @@
                             {{ well.get_recommended_flow|floatformat:2 }} м³/сут
                         {% endif %}
                     </td>
-                    <td>{{ well.get_dynamic_level_from_telemetry|default:well.get_dynamic_level|floatformat:1 }}</td>
+                    <td>{{ well.get_dynamic_level|floatformat:1 }}</td>
                     <td>{{ well.get_static_level|default_if_none:"—"|floatformat:1 }}</td>
                     <td class="text-center well-status-cell">
                         {% if well.status_data %}

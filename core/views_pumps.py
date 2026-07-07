@@ -342,160 +342,185 @@ class PumpCharacteristicViewSet(viewsets.ModelViewSet):
             'motors': result[:10]  # Ограничиваем 10 лучшими
         })
 
+    # @action(detail=False, methods=['get'])
+    # def select_for_well(self, request):
+    #     """
+    #     Подбор оптимальной пары насос+двигатель для скважины
+    #     """
+    #     well_id = request.query_params.get('well_id')
+    #     if not well_id:
+    #         return Response(
+    #             {'error': 'Не указан ID скважины'},
+    #             status=status.HTTP_400_BAD_REQUEST
+    #         )
+    #
+    #     try:
+    #         well = Well.objects.get(id=well_id)
+    #     except Well.DoesNotExist:
+    #         return Response(
+    #             {'error': f'Скважина с ID {well_id} не найдена'},
+    #             status=status.HTTP_404_NOT_FOUND
+    #         )
+    #
+    #     # --- Получение параметров из запроса ---
+    #     target_flow = request.query_params.get('target_flow')
+    #     if target_flow:
+    #         try:
+    #             target_flow = float(target_flow)
+    #         except ValueError:
+    #             return Response(
+    #                 {'error': 'Некорректное значение целевого расхода'},
+    #                 status=status.HTTP_400_BAD_REQUEST
+    #             )
+    #     else:
+    #         target_flow = well.get_recommended_flow()
+    #
+    #     # Проверка реалистичности дебита
+    #     max_flow = well.get_max_possible_flow()
+    #     if max_flow and target_flow > max_flow:
+    #         return Response({
+    #             'error': f'Запрошенный дебит {target_flow:.1f} м³/сут превышает максимально возможный {max_flow:.1f} м³/сут',
+    #             'well_id': well.id,
+    #             'max_possible_flow': max_flow
+    #         }, status=status.HTTP_400_BAD_REQUEST)
+    #
+    #     # Коэффициент запаса
+    #     service_factor = request.query_params.get('service_factor', '1.15')
+    #     try:
+    #         service_factor = float(service_factor.replace(',', '.'))
+    #     except ValueError:
+    #         service_factor = 1.15
+    #
+    #     # Давление на приеме (опционально)
+    #     intake_pressure = request.query_params.get('intake_pressure')
+    #     if intake_pressure:
+    #         try:
+    #             intake_pressure = float(intake_pressure)
+    #         except ValueError:
+    #             intake_pressure = None
+    #     else:
+    #         intake_pressure = None
+    #
+    #     # --- Расчет потребного напора ---
+    #     required_head = well.calculate_required_head(target_flow, intake_pressure)
+    #
+    #     # Глубина спуска насоса
+    #     pump_depth = well.get_pump_depth(target_flow, intake_pressure)
+    #
+    #     # Свойства жидкости на приеме
+    #     if intake_pressure is None:
+    #         P_intake = well.get_min_intake_pressure()
+    #     else:
+    #         P_intake = intake_pressure
+    #
+    #     fluid_props = well.get_fluid_properties_at_intake(target_flow, P_intake)
+    #
+    #     # --- Поиск подходящих насосов ---
+    #     suitable_pumps = PumpCharacteristic.objects.filter(
+    #         is_active=True,
+    #         left_range__lte=target_flow,
+    #         right_range__gte=target_flow
+    #     )
+    #
+    #     results = []
+    #     for pump in suitable_pumps:
+    #         pump_params = pump.calculate_at_point(target_flow)
+    #
+    #         pump_head = pump_params['h']
+    #
+    #         if pump_head < required_head * 0.95:  # допуск 5%
+    #             continue
+    #         if pump_head > required_head * 1.3:  # запас >30% - неэкономично
+    #             continue
+    #
+    #         # Расчет мощности
+    #         power_data = pump.calculate_power_consumption(target_flow)
+    #         required_power = power_data['shaft_power_kw'] * service_factor
+    #
+    #         # Поиск двигателя
+    #         suitable_motors = ElectricMotor.objects.filter(
+    #             is_active=True,
+    #             nominal_power__gte=required_power * 0.85,
+    #             nominal_power__lte=required_power * 1.2
+    #         ).order_by('-efficiency')
+    #
+    #         best_motor = suitable_motors.first()
+    #
+    #         if best_motor:
+    #             overall_efficiency = round(
+    #                 (pump_params['kpd'] / 100) * (best_motor.efficiency / 100) * 100,
+    #                 1
+    #             )
+    #
+    #             results.append({
+    #                 'pump': {
+    #                     'id': pump.id,
+    #                     'name': pump.harka_stupen,
+    #                     'nominal_flow': pump.nominal_range,
+    #                     'working_range': [pump.left_range, pump.right_range],
+    #                 },
+    #                 'pump_at_point': {
+    #                     'flow': pump_params['q'],
+    #                     'head': pump_params['h'],
+    #                     'power': pump_params['n'],
+    #                     'efficiency': pump_params['kpd']
+    #                 },
+    #                 'motor': {
+    #                     'id': best_motor.id,
+    #                     'model': best_motor.model,
+    #                     'power': best_motor.nominal_power,
+    #                     'efficiency': best_motor.efficiency,
+    #                     'service_factor': round(
+    #                         best_motor.nominal_power / power_data['shaft_power_kw'], 2
+    #                     ) if power_data['shaft_power_kw'] and power_data['shaft_power_kw'] > 0 else 0
+    #                 },
+    #                 'overall_efficiency': overall_efficiency
+    #             })
+    #
+    #     results.sort(key=lambda x: x['overall_efficiency'], reverse=True)
+    #
+    #     return Response({
+    #         'well': {
+    #             'id': well.id,
+    #             'name': well.name,
+    #             'depth': well.depth,
+    #             'reservoir_pressure': well.reservoir_pressure,
+    #             'productivity_index': well.productivity_index,
+    #             'water_cut': well.water_cut,
+    #             'pump_depth': pump_depth
+    #         },
+    #         'selection_parameters': {
+    #             'target_flow': target_flow,
+    #             'required_head': required_head,
+    #             'service_factor': service_factor,
+    #             'intake_pressure': round(P_intake, 2),
+    #             'gas_fraction': round(fluid_props['gas_fraction'] * 100, 1)
+    #         },
+    #         'found_count': len(results),
+    #         'recommendations': results[:10]
+    #     })
+
     @action(detail=False, methods=['get'])
     def select_for_well(self, request):
-        """
-        Подбор оптимальной пары насос+двигатель для скважины
-        """
+        """Подбор оптимальной пары насос-двигатель для скважины"""
         well_id = request.query_params.get('well_id')
         if not well_id:
             return Response(
-                {'error': 'Не указан ID скважины'},
-                status=status.HTTP_400_BAD_REQUEST
+                {'error': 'Не передан ID скважины'},
+                      status=status.HTTP_400_BAD_REQUEST
             )
-
         try:
             well = Well.objects.get(id=well_id)
         except Well.DoesNotExist:
             return Response(
-                {'error': f'Скважина с ID {well_id} не найдена'},
-                status=status.HTTP_404_NOT_FOUND
+                {'error': "Скважины с указанным ID не существует"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except ValueError:
+            return Response(
+                {'error': 'ID скважины должно быть числом'},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
-        # --- Получение параметров из запроса ---
         target_flow = request.query_params.get('target_flow')
-        if target_flow:
-            try:
-                target_flow = float(target_flow)
-            except ValueError:
-                return Response(
-                    {'error': 'Некорректное значение целевого расхода'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        else:
-            target_flow = well.get_recommended_flow()
 
-        # Проверка реалистичности дебита
-        max_flow = well.get_max_possible_flow()
-        if max_flow and target_flow > max_flow:
-            return Response({
-                'error': f'Запрошенный дебит {target_flow:.1f} м³/сут превышает максимально возможный {max_flow:.1f} м³/сут',
-                'well_id': well.id,
-                'max_possible_flow': max_flow
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        # Коэффициент запаса
-        service_factor = request.query_params.get('service_factor', '1.15')
-        try:
-            service_factor = float(service_factor.replace(',', '.'))
-        except ValueError:
-            service_factor = 1.15
-
-        # Давление на приеме (опционально)
-        intake_pressure = request.query_params.get('intake_pressure')
-        if intake_pressure:
-            try:
-                intake_pressure = float(intake_pressure)
-            except ValueError:
-                intake_pressure = None
-        else:
-            intake_pressure = None
-
-        # --- Расчет потребного напора ---
-        required_head = well.calculate_required_head(target_flow, intake_pressure)
-
-        # Глубина спуска насоса
-        pump_depth = well.get_pump_depth(target_flow, intake_pressure)
-
-        # Свойства жидкости на приеме
-        if intake_pressure is None:
-            P_intake = well.get_min_intake_pressure()
-        else:
-            P_intake = intake_pressure
-
-        fluid_props = well.get_fluid_properties_at_intake(target_flow, P_intake)
-
-        # --- Поиск подходящих насосов ---
-        suitable_pumps = PumpCharacteristic.objects.filter(
-            is_active=True,
-            left_range__lte=target_flow,
-            right_range__gte=target_flow
-        )
-
-        results = []
-        for pump in suitable_pumps:
-            pump_params = pump.calculate_at_point(target_flow)
-
-            pump_head = pump_params['h']
-
-            if pump_head < required_head * 0.95:  # допуск 5%
-                continue
-            if pump_head > required_head * 1.3:  # запас >30% - неэкономично
-                continue
-
-            # Расчет мощности
-            power_data = pump.calculate_power_consumption(target_flow)
-            required_power = power_data['shaft_power_kw'] * service_factor
-
-            # Поиск двигателя
-            suitable_motors = ElectricMotor.objects.filter(
-                is_active=True,
-                nominal_power__gte=required_power * 0.85,
-                nominal_power__lte=required_power * 1.2
-            ).order_by('-efficiency')
-
-            best_motor = suitable_motors.first()
-
-            if best_motor:
-                overall_efficiency = round(
-                    (pump_params['kpd'] / 100) * (best_motor.efficiency / 100) * 100,
-                    1
-                )
-
-                results.append({
-                    'pump': {
-                        'id': pump.id,
-                        'name': pump.harka_stupen,
-                        'nominal_flow': pump.nominal_range,
-                        'working_range': [pump.left_range, pump.right_range],
-                    },
-                    'pump_at_point': {
-                        'flow': pump_params['q'],
-                        'head': pump_params['h'],
-                        'power': pump_params['n'],
-                        'efficiency': pump_params['kpd']
-                    },
-                    'motor': {
-                        'id': best_motor.id,
-                        'model': best_motor.model,
-                        'power': best_motor.nominal_power,
-                        'efficiency': best_motor.efficiency,
-                        'service_factor': round(
-                            best_motor.nominal_power / power_data['shaft_power_kw'], 2
-                            ) if power_data['shaft_power_kw'] and power_data['shaft_power_kw'] > 0 else 0
-                    },
-                    'overall_efficiency': overall_efficiency
-                })
-
-        results.sort(key=lambda x: x['overall_efficiency'], reverse=True)
-
-        return Response({
-            'well': {
-                'id': well.id,
-                'name': well.name,
-                'depth': well.depth,
-                'reservoir_pressure': well.reservoir_pressure,
-                'productivity_index': well.productivity_index,
-                'water_cut': well.water_cut,
-                'pump_depth': pump_depth
-            },
-            'selection_parameters': {
-                'target_flow': target_flow,
-                'required_head': required_head,
-                'service_factor': service_factor,
-                'intake_pressure': round(P_intake, 2),
-                'gas_fraction': round(fluid_props['gas_fraction'] * 100, 1)
-            },
-            'found_count': len(results),
-            'recommendations': results[:10]
-        })
