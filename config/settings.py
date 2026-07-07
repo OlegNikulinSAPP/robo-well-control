@@ -188,3 +188,10 @@ SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_DOMAIN = '.twc1.net'
 SESSION_COOKIE_DOMAIN = '.twc1.net'
 CSRF_USE_SESSIONS = False
+
+# ВРЕМЕННО: отключаем CSRF для админки
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.admin import site
+
+# Применяем csrf_exempt к админке
+site.login = csrf_exempt(site.login)
