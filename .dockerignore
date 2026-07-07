@@ -1,0 +1,1 @@
+".git\n.venv\n*.pyc\n__pycache__\ndb.sqlite3\n*.sql\n*.b64\n*.zip\n.env\n.idea" 
