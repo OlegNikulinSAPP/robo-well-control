@@ -13,18 +13,17 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 from pathlib import Path
 import os
 
-# CSRF_TRUSTED_ORIGINS из переменных окружения
-CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',')
-if CSRF_TRUSTED_ORIGINS == ['']:
-    CSRF_TRUSTED_ORIGINS = []
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 # ============================================================
-# ===== ПРИНУДИТЕЛЬНЫЕ НАСТРОЙКИ ДЛЯ CSRF И ДОМЕНОВ =====
+# ===== БЕЗОПАСНОСТЬ И ДОСТУПЫ =====
 # ============================================================
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dev-key-please-change-in-production')
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+
+# Принудительные настройки (НЕ МЕНЯТЬ!)
 CSRF_TRUSTED_ORIGINS = [
     'https://olegnikulinsapp-robo-well-control-f74a.twc1.net',
     'http://olegnikulinsapp-robo-well-control-f74a.twc1.net',
@@ -41,19 +40,14 @@ ALLOWED_HOSTS = [
     '.twc1.net',
 ]
 
-# ВРЕМЕННО: отключаем защиту для диагностики
-CSRF_COOKIE_SECURE = False
-SESSION_COOKIE_SECURE = False
-SECURE_PROXY_SSL_HEADER = None
+# Безопасность (включены для продакшена)
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 CSRF_USE_SESSIONS = False
 CSRF_COOKIE_DOMAIN = '.twc1.net'
 SESSION_COOKIE_DOMAIN = '.twc1.net'
 # ============================================================
-
-
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dev-key-please-change-in-production')
-
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 
 # Application definition
@@ -180,12 +174,3 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 }
-
-# === ПРИНУДИТЕЛЬНО (НЕ УДАЛЯТЬ!) ===
-import os
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-
-# Переопределяем через модуль
-from django.conf import settings as django_settings
-django_settings.ALLOWED_HOSTS = ['olegnikulinsapp-robo-well-control-f74a.twc1.net']
-django_settings.CSRF_TRUSTED_ORIGINS = ['https://olegnikulinsapp-robo-well-control-f74a.twc1.net']
