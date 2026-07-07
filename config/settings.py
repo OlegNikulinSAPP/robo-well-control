@@ -11,45 +11,39 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
+# ===== БЕЗОПАСНОСТЬ И ДОСТУПЫ =====
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dev-key-please-change-in-production')
 
-# SECURITY WARNING: keep the secret key used in production secret!
-import os
-
-# ===== ПРИНУДИТЕЛЬНЫЕ НАСТРОЙКИ (НЕ УДАЛЯТЬ!) =====
-CSRF_TRUSTED_ORIGINS = [
-    'https://olegnikulinsapp-robo-well-control-f74a.twc1.net',
-    'http://olegnikulinsapp-robo-well-control-f74a.twc1.net',
-    'https://olegnikulinapp-robo-well-control-b926.twc1.net',
-    'http://olegnikulinapp-robo-well-control-b926.twc1.net',
-]
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = [
     'olegnikulinsapp-robo-well-control-f74a.twc1.net',
+    'olegnikulinapp-robo-well-control-b926.twc1.net',
     '188.225.9.253',
     'localhost',
     '127.0.0.1',
+    '.twc1.net',
 ]
 
-# Отключаем проверку CSRF для админки (временно!)
-CSRF_FAILURE_VIEW = 'django.views.csrf.csrf_failure'
-# ===== КОНЕЦ ПРИНУДИТЕЛЬНЫХ НАСТРОЕК =====
+# ВРЕМЕННО: '*' для диагностики CSRF (убрать после решения проблемы!)
+CSRF_TRUSTED_ORIGINS = ['*']
 
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dev-key-please-change-in-production')
+# CSRF и куки
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_DOMAIN = '.twc1.net'
+SESSION_COOKIE_DOMAIN = '.twc1.net'
+CSRF_USE_SESSIONS = False
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
-
-# ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
 # Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -96,8 +90,6 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 
 # Database
-# https://docs.djangoproject.com/en/4.2/ref/settings/#databases
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -107,8 +99,6 @@ DATABASES = {
 
 
 # Password validation
-# https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
-
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -126,29 +116,22 @@ AUTH_PASSWORD_VALIDATORS = [
 
 
 # Internationalization
-# https://docs.djangoproject.com/en/4.2/topics/i18n/
-
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'Europe/Moscow'
 USE_TZ = False
-
 USE_I18N = True
-
 DEFAULT_CHARSET = 'utf-8'
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-# Static files
+# Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # куда собирается статика
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
-# Default primary key field type
-# https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
+# Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
 
 # REST Framework settings
 REST_FRAMEWORK = {
@@ -159,17 +142,19 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',  # ← ЭТО НОВАЯ СТРОКА
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
+
 # Celery settings
-CELERY_BROKER_URL = 'django://'  # используем БД как брокер
+CELERY_BROKER_URL = 'django://'
 CELERY_RESULT_BACKEND = 'django-db'
 CELERY_CACHE_BACKEND = 'django-cache'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
+
 
 # drf-spectacular settings
 SPECTACULAR_SETTINGS = {
@@ -178,20 +163,3 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 }
-
-# Для работы за прокси (HTTPS)
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-
-# Куки
-CSRF_COOKIE_SECURE = True
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_DOMAIN = '.twc1.net'
-SESSION_COOKIE_DOMAIN = '.twc1.net'
-CSRF_USE_SESSIONS = False
-
-# ВРЕМЕННО: отключаем CSRF для админки
-from django.views.decorators.csrf import csrf_exempt
-from django.contrib.admin import site
-
-# Применяем csrf_exempt к админке
-site.login = csrf_exempt(site.login)
