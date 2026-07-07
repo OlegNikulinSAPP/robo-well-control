@@ -31,16 +31,21 @@ ALLOWED_HOSTS = [
     '.twc1.net',
 ]
 
-# ВРЕМЕННО: '*' для диагностики CSRF (убрать после решения проблемы!)
-CSRF_TRUSTED_ORIGINS = ['*']
+# ===== ПРИНУДИТЕЛЬНОЕ РЕШЕНИЕ ДЛЯ CSRF И ORIGIN CHECKING =====
+CSRF_TRUSTED_ORIGINS = [
+    'https://olegnikulinsapp-robo-well-control-f74a.twc1.net',
+    'http://olegnikulinsapp-robo-well-control-f74a.twc1.net',
+    'https://olegnikulinapp-robo-well-control-b926.twc1.net',
+    'http://olegnikulinapp-robo-well-control-b926.twc1.net',
+]
 
-# CSRF и куки
-CSRF_COOKIE_SECURE = True
-SESSION_COOKIE_SECURE = True
+# ВРЕМЕННО: отключаем защиту для диагностики (убрать после входа!)
+CSRF_COOKIE_SECURE = False
+SESSION_COOKIE_SECURE = False
+SECURE_PROXY_SSL_HEADER = None
+CSRF_USE_SESSIONS = False
 CSRF_COOKIE_DOMAIN = '.twc1.net'
 SESSION_COOKIE_DOMAIN = '.twc1.net'
-CSRF_USE_SESSIONS = False
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 
 # Application definition
@@ -62,7 +67,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    # 'django.middleware.csrf.CsrfViewMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
