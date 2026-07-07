@@ -181,16 +181,11 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,
 }
 
-# ===== ПОСЛЕДНЯЯ СТРОКА В ФАЙЛЕ =====
-# Принудительная установка CSRF и ALLOWED_HOSTS
-CSRF_TRUSTED_ORIGINS = [
-    'https://olegnikulinsapp-robo-well-control-f74a.twc1.net',
-    'http://olegnikulinsapp-robo-well-control-f74a.twc1.net',
-]
-ALLOWED_HOSTS = [
-    'olegnikulinsapp-robo-well-control-f74a.twc1.net',
-    '188.225.9.253',
-    'localhost',
-    '127.0.0.1',
-]
-# ===== КОНЕЦ ФАЙЛА =====
+# === ПРИНУДИТЕЛЬНО (НЕ УДАЛЯТЬ!) ===
+import os
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+
+# Переопределяем через модуль
+from django.conf import settings as django_settings
+django_settings.ALLOWED_HOSTS = ['olegnikulinsapp-robo-well-control-f74a.twc1.net']
+django_settings.CSRF_TRUSTED_ORIGINS = ['https://olegnikulinsapp-robo-well-control-f74a.twc1.net']
