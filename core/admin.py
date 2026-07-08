@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import Well, ElectricMotor, PumpCharacteristic, TelemetryData, Alert, CommandLog
+from django.urls import reverse
 
 
 @admin.register(Well)
@@ -149,11 +150,8 @@ class CommandLogAdmin(admin.ModelAdmin):
     list_per_page = 50
 
 
-from django.contrib import admin
-from django.urls import reverse
-from django.utils.html import format_html
-
 admin.site.site_header = 'RoboWell Control'
+
 
 # Добавляем ссылку в меню
 def get_app_list(self, request):
@@ -169,5 +167,6 @@ def get_app_list(self, request):
         }]
     })
     return app_list
+
 
 admin.AdminSite.get_app_list = get_app_list

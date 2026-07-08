@@ -11,8 +11,4 @@ urlpatterns = [
     path('admin/', admin_site.urls),
     path('api/', include('core.urls')),
     path('', include('core.urls_web')),
-    path('admin/backup/', backup_list, name='backup_list'),
-    path('admin/backup/download/', backup_download, name='backup_download'),
-    path('admin/backup/create/', backup_create, name='backup_create'),
-    path('admin/backup/restore/', backup_restore, name='backup_restore'),
 ]
