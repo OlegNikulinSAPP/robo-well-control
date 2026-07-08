@@ -147,3 +147,27 @@ class CommandLogAdmin(admin.ModelAdmin):
     list_filter = ('well', 'command_type', 'status')
     ordering = ('-created_at',)
     list_per_page = 50
+
+
+from django.contrib import admin
+from django.urls import reverse
+from django.utils.html import format_html
+
+admin.site.site_header = 'RoboWell Control'
+
+# Добавляем ссылку в меню
+def get_app_list(self, request):
+    app_list = super().get_app_list(request)
+    app_list.append({
+        'name': 'Управление',
+        'app_label': 'backup',
+        'models': [{
+            'name': 'Бэкапы БД',
+            'object_name': 'backup',
+            'admin_url': reverse('backup_list'),
+            'view_only': True,
+        }]
+    })
+    return app_list
+
+admin.AdminSite.get_app_list = get_app_list
