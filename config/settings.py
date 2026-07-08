@@ -21,7 +21,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ===== БЕЗОПАСНОСТЬ И ДОСТУПЫ =====
 # ============================================================
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dev-key-please-change-in-production')
-DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+# DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+DEBUG = True
 
 # Принудительные настройки (НЕ МЕНЯТЬ!)
 CSRF_TRUSTED_ORIGINS = [
