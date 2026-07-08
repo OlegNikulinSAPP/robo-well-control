@@ -12,7 +12,8 @@ class Command(BaseCommand):
             User.objects.create_superuser(
                 username='admin',
                 email='oleg309@yandex.ru',
-                password=password
+                password=password,
+                is_active=True
             )
             self.stdout.write(self.style.SUCCESS('✅ Суперпользователь создан'))
         else:
