@@ -22,4 +22,5 @@ RUN python manage.py collectstatic --noinput
 
 EXPOSE 8000
 
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]
+#CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]
+CMD ["sh", "-c", "python manage.py migrate && python manage.py import_motors motor_models.xls && python manage.py import_pumps test_pumps.xlsx && gunicorn config.wsgi:application --bind 0.0.0.0:8000"]
