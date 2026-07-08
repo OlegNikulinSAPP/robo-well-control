@@ -15,7 +15,7 @@ RUN pip install --upgrade requests
 RUN mkdir -p /app/static
 RUN mkdir -p /app/staticfiles
 
-# Миграции и сбор статики (САМОЕ ВАЖНОЕ)
+# Миграции и сбор статики
 RUN python manage.py makemigrations --noinput
 RUN python manage.py migrate --noinput
 RUN python manage.py collectstatic --noinput

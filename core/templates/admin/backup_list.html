@@ -1,0 +1,54 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block content %}
+<div id="content-main">
+    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+        <a href="{% url 'backup_create' %}" class="button" style="padding: 10px 20px; background: #4CAF50; color: white; text-decoration: none; border-radius: 4px;">
+            ➕ Создать бэкап
+        </a>
+    </div>
+
+    <h2>Список бэкапов</h2>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div style="padding: 10px; background: {% if message.tags == 'success' %}#d4edda{% else %}#f8d7da{% endif %}; border-radius: 4px; margin-bottom: 10px;">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    {% if files %}
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr>
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Имя файла</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Размер</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Дата</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for file in files %}
+                <tr>
+                    <td style="border: 1px solid #ddd; padding: 8px;">{{ file.name }}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">{{ file.size|filesizeformat }}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">{{ file.modified|date:"Y-m-d H:i" }}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">
+                        <a href="{% url 'backup_download' %}?file={{ file.name }}" style="color: #0066cc; margin-right: 10px;">⬇️ Скачать</a>
+                        <form method="POST" action="{% url 'backup_restore' %}" style="display: inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="file" value="{{ file.name }}">
+                            <button type="submit" style="background: #ff9800; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer;">♻️ Восстановить</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>Бэкапов пока нет. Создайте первый бэкап кнопкой выше.</p>
+    {% endif %}
+</div>
+{% endblock %}
