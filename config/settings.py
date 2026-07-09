@@ -105,8 +105,12 @@ os.makedirs(DATA_DIR, exist_ok=True)
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(DATA_DIR, 'db.sqlite3'),
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'robo_well_db',
+        'USER': 'robo_user',
+        'PASSWORD': '99289928Oleg_',
+        'HOST': '171.22.74.158',
+        'PORT': '5432',
     }
 }
 
